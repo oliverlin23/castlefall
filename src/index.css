@@ -1,17 +1,36 @@
 @import "tailwindcss";
 
 @theme {
-  --color-team1: #3b82f6;
-  --color-team2: #ef4444;
-  --color-surface: #1e1e2e;
-  --color-surface-alt: #2a2a3e;
-  --color-surface-hover: #35354d;
-  --color-border: #3f3f5c;
-  --color-text-primary: #e2e2f0;
-  --color-text-secondary: #9999b3;
-  --color-accent: #7c3aed;
-  --color-accent-hover: #6d28d9;
+  --color-team1: #60a5fa;
+  --color-team2: #f87171;
+  --color-surface: #111111;
+  --color-surface-alt: #191919;
+  --color-surface-hover: #242424;
+  --color-border: #2a2a2a;
+  --color-text-primary: #fafafa;
+  --color-text-secondary: #737373;
+  --color-accent: #6366f1;
+  --color-accent-hover: #4f46e5;
   --color-highlight: #facc15;
+
+  --animate-fade-in: fade-in 0.3s ease-out;
+  --animate-slide-up: slide-up 0.3s ease-out;
+  --animate-pulse-glow: pulse-glow 2s ease-in-out infinite;
+}
+
+@keyframes fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slide-up {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes pulse-glow {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.7; }
 }
 
 body {
@@ -22,4 +41,8 @@ body {
 * {
   scrollbar-width: thin;
   scrollbar-color: var(--color-border) transparent;
+}
+
+button, input, select {
+  transition: background-color 150ms, border-color 150ms, color 150ms, opacity 150ms;
 }

@@ -50,10 +50,10 @@ export function GameBoard({
   );
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 animate-fade-in">
       <div className="rounded-xl bg-surface-alt border border-border p-5 space-y-4">
         <div className="flex items-center justify-between">
-          <h2 className="text-lg font-bold">Your Words</h2>
+          <h2 className="text-sm font-semibold">Your Words</h2>
           <span className="text-xs text-text-secondary">
             Your word is highlighted
           </span>
@@ -61,32 +61,32 @@ export function GameBoard({
         <WordList words={words} assignedWord={assignedWord} />
       </div>
 
-      <div className="flex items-center gap-3 flex-wrap">
-        <span className="text-sm text-text-secondary">
-          {players.length} players in round
+      <div className="flex items-center gap-2 flex-wrap">
+        <span className="text-xs text-text-secondary">
+          {players.length} players
         </span>
         <div className="flex-1" />
         {!hasActiveDeclaration && (
           <button
             onClick={() => setShowDeclaration(!showDeclaration)}
-            className={`rounded-lg px-4 py-2 text-sm font-medium transition-colors ${
+            className={`rounded-lg px-4 py-2 text-xs font-medium ${
               showDeclaration
                 ? 'bg-surface-hover border border-border text-text-primary'
                 : 'bg-accent text-white hover:bg-accent-hover'
             }`}
           >
-            {showDeclaration ? 'Hide Declaration' : 'Declare Victory'}
+            {showDeclaration ? 'Cancel' : 'Declare Victory'}
           </button>
         )}
         <button
           onClick={hasVoted ? onUnvoteToReveal : onVoteToReveal}
-          className={`rounded-lg border px-4 py-2 text-sm transition-colors ${
+          className={`rounded-lg border px-4 py-2 text-xs font-medium ${
             hasVoted
-              ? 'bg-accent/10 border-accent text-accent hover:bg-accent/20'
+              ? 'bg-accent/10 border-accent/40 text-accent hover:bg-accent/20'
               : 'bg-surface-alt border-border text-text-secondary hover:bg-surface-hover hover:text-text-primary'
           }`}
         >
-          {hasVoted ? 'Retract Vote' : 'Vote to Reveal'} ({revealVotes.length}/{voteThreshold})
+          {hasVoted ? 'Retract' : 'Vote Reveal'} ({revealVotes.length}/{voteThreshold})
         </button>
       </div>
 

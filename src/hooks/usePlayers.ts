@@ -2,16 +2,37 @@ import { useEffect, useState, useCallback, useRef } from 'react';
 import { supabase } from '../lib/supabase';
 import type { Player } from '../types';
 
-const PLAYER_NAME_KEY = 'castlefall_player_name';
+const PLAYER_STORAGE_KEY = 'castlefall_player';
 const STALE_THRESHOLD_MS = 5 * 60 * 1000;
 
-function getStoredPlayerName(): string {
-  return localStorage.getItem(PLAYER_NAME_KEY) || '';
+interface StoredPlayer {
+  id: string;
+  name: string;
+  roomName: string;
+}
+
+function getStoredPlayer(): StoredPlayer | null {
+  try {
+    const raw = localStorage.getItem(PLAYER_STORAGE_KEY);
+    if (!raw) return null;
+    return JSON.parse(raw);
+  } catch {
+    return null;
+  }
+}
+
+function storePlayer(id: string, name: string, roomName: string) {
+  localStorage.setItem(PLAYER_STORAGE_KEY, JSON.stringify({ id, name, roomName }));
+}
+
+function clearStoredPlayer() {
+  localStorage.removeItem(PLAYER_STORAGE_KEY);
 }
 
 export function usePlayers(roomId: string | undefined, activeGameId?: string | null) {
   const [players, setPlayers] = useState<Player[]>([]);
   const [currentPlayer, setCurrentPlayer] = useState<Player | null>(null);
+  const [reconnecting, setReconnecting] = useState(false);
   const heartbeatRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const pruneRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
@@ -32,8 +53,6 @@ export function usePlayers(roomId: string | undefined, activeGameId?: string | n
       const trimmed = displayName.trim();
       if (!trimmed) return null;
 
-      localStorage.setItem(PLAYER_NAME_KEY, trimmed);
-
       const { data: existing } = await supabase
         .from('players')
         .select('*')
@@ -50,6 +69,7 @@ export function usePlayers(roomId: string | undefined, activeGameId?: string | n
           .single();
         if (updated) {
           setCurrentPlayer(updated);
+          storePlayer(updated.id, trimmed, roomId);
           return updated;
         }
       }
@@ -66,6 +86,7 @@ export function usePlayers(roomId: string | undefined, activeGameId?: string | n
       }
 
       setCurrentPlayer(created);
+      storePlayer(created.id, trimmed, roomId);
       return created;
     },
     [roomId],
@@ -73,31 +94,60 @@ export function usePlayers(roomId: string | undefined, activeGameId?: string | n
 
   const tryReconnect = useCallback(async () => {
     if (!roomId) return null;
-    const storedName = getStoredPlayerName();
-    if (!storedName) return null;
+    setReconnecting(true);
 
-    const { data } = await supabase
-      .from('players')
-      .select('*')
-      .eq('room_id', roomId)
-      .eq('display_name', storedName)
-      .single();
+    const stored = getStoredPlayer();
 
-    if (data) {
-      await supabase
+    // Try by stored UUID first
+    if (stored?.id) {
+      const { data } = await supabase
         .from('players')
-        .update({ last_seen: new Date().toISOString() })
-        .eq('id', data.id);
-      setCurrentPlayer({ ...data, last_seen: new Date().toISOString() });
-      return data;
+        .select('*')
+        .eq('id', stored.id)
+        .eq('room_id', roomId)
+        .single();
+
+      if (data) {
+        await supabase
+          .from('players')
+          .update({ last_seen: new Date().toISOString() })
+          .eq('id', data.id);
+        setCurrentPlayer({ ...data, last_seen: new Date().toISOString() });
+        storePlayer(data.id, data.display_name, roomId);
+        setReconnecting(false);
+        return data;
+      }
     }
+
+    // Fall back to name matching
+    if (stored?.name) {
+      const { data } = await supabase
+        .from('players')
+        .select('*')
+        .eq('room_id', roomId)
+        .eq('display_name', stored.name)
+        .single();
+
+      if (data) {
+        await supabase
+          .from('players')
+          .update({ last_seen: new Date().toISOString() })
+          .eq('id', data.id);
+        setCurrentPlayer({ ...data, last_seen: new Date().toISOString() });
+        storePlayer(data.id, data.display_name, roomId);
+        setReconnecting(false);
+        return data;
+      }
+    }
+
+    setReconnecting(false);
     return null;
   }, [roomId]);
 
   const leaveRoom = useCallback(async () => {
     if (!currentPlayer) return;
     await supabase.from('players').delete().eq('id', currentPlayer.id);
-    localStorage.removeItem(PLAYER_NAME_KEY);
+    clearStoredPlayer();
     setCurrentPlayer(null);
   }, [currentPlayer]);
 
@@ -153,8 +203,6 @@ export function usePlayers(roomId: string | undefined, activeGameId?: string | n
         .eq('id', currentPlayer.id);
     }, 30_000);
 
-    // Prune stale players who are NOT in the active game.
-    // Players in an active game are protected so they can reconnect.
     pruneRef.current = setInterval(async () => {
       const cutoff = new Date(Date.now() - STALE_THRESHOLD_MS).toISOString();
       let query = supabase
@@ -176,12 +224,15 @@ export function usePlayers(roomId: string | undefined, activeGameId?: string | n
     };
   }, [currentPlayer?.id, roomId, activeGameId]);
 
+  const storedPlayer = getStoredPlayer();
+
   return {
     players,
     currentPlayer,
+    reconnecting,
     registerPlayer,
     tryReconnect,
     leaveRoom,
-    storedName: getStoredPlayerName(),
+    storedName: storedPlayer?.name ?? '',
   };
 }

@@ -1,6 +1,7 @@
 import { useState, useMemo, type FormEvent } from 'react';
 import { Timer } from './Timer';
 import { suggestedN } from '../lib/gameLogic';
+import { playSound } from '../lib/sounds';
 import type { Game, Player } from '../types';
 
 interface VictoryDeclarationProps {
@@ -27,6 +28,7 @@ export function VictoryDeclaration({
   const [showWordGuess, setShowWordGuess] = useState(false);
 
   const n = useMemo(() => suggestedN(players.length), [players.length]);
+  const timerDurationMs = game.settings?.timerDurationMs ?? 60_000;
 
   function togglePlayer(playerId: string) {
     setSelectedPlayers((prev) => {
@@ -44,6 +46,7 @@ export function VictoryDeclaration({
   function handleDeclareTeam(e: FormEvent) {
     e.preventDefault();
     if (selectedPlayers.size >= n) {
+      playSound('declare');
       onDeclareTeam(Array.from(selectedPlayers));
     }
   }
@@ -51,11 +54,11 @@ export function VictoryDeclaration({
   function handleDeclareWord(e: FormEvent) {
     e.preventDefault();
     if (wordGuess.trim()) {
+      playSound('declare');
       onDeclareWord(wordGuess.trim());
     }
   }
 
-  // Active team declaration: show timer + counter-guess to everyone
   if (game.declaration_type === 'team' && game.declaration_at) {
     const declarerName = game.declaration_player_name ?? 'Someone';
     const iDeclared = game.declaration_player_id === currentPlayer.id;
@@ -63,41 +66,41 @@ export function VictoryDeclaration({
     const declarationTimestamp = new Date(game.declaration_at).getTime();
 
     return (
-      <div className="rounded-xl bg-surface-alt border border-border p-6 space-y-4">
-        <h3 className="text-lg font-bold text-center">
+      <div className="rounded-xl bg-surface-alt border border-border p-6 space-y-5 animate-slide-up">
+        <h3 className="text-sm font-semibold text-center">
           {iDeclared ? 'Your' : `${declarerName}'s`} Team Declaration
         </h3>
-        <p className="text-sm text-text-secondary text-center">
+        <p className="text-xs text-text-secondary text-center">
           {declarerName} claims these players are on their team:
         </p>
-        <div className="flex flex-wrap gap-2 justify-center">
+        <div className="flex flex-wrap gap-1.5 justify-center">
           {players
             .filter((p) => selectedIds.includes(p.id))
             .map((p) => (
               <span
                 key={p.id}
-                className="rounded-lg bg-accent/20 text-accent px-3 py-1 text-sm font-medium"
+                className="rounded-full bg-accent/15 text-accent px-3 py-1 text-xs font-medium"
               >
                 {p.display_name}
               </span>
             ))}
         </div>
         <Timer
-          durationMs={60_000}
+          durationMs={timerDurationMs}
           startedAt={declarationTimestamp}
           onExpired={onTimerExpired}
-          label="Time remaining to counter with a word guess"
+          label="Time to counter with a word guess"
         />
 
-        <div className="border-t border-border pt-4">
-          <p className="text-sm text-text-secondary mb-2 text-center">
-            Counter with a word guess (overrides the team declaration):
+        <div className="border-t border-border pt-4 space-y-3">
+          <p className="text-xs text-text-secondary text-center">
+            Counter with a word guess to override the declaration:
           </p>
-          <form onSubmit={handleDeclareWord} className="flex gap-2 justify-center">
+          <form onSubmit={handleDeclareWord} className="flex flex-col sm:flex-row gap-2 justify-center">
             <select
               value={wordGuess}
               onChange={(e) => setWordGuess(e.target.value)}
-              className="rounded-lg bg-surface border border-border px-3 py-2 text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-team2"
+              className="rounded-lg bg-surface border border-border px-3 py-2 text-sm text-text-primary focus:outline-none focus:border-team2"
             >
               <option value="">Select a word...</option>
               {game.game_words
@@ -111,7 +114,7 @@ export function VictoryDeclaration({
             <button
               type="submit"
               disabled={!wordGuess}
-              className="rounded-lg bg-team2 px-4 py-2 text-sm font-medium text-white hover:bg-team2/80 transition-colors disabled:opacity-40"
+              className="rounded-lg bg-team2 px-4 py-2 text-sm font-medium text-white hover:bg-team2/80 disabled:opacity-40"
             >
               Guess Word
             </button>
@@ -121,18 +124,37 @@ export function VictoryDeclaration({
     );
   }
 
-  // No active declaration: show the declaration form (only to declare)
   return (
-    <div className="rounded-xl bg-surface-alt border border-border p-6 space-y-6">
-      <h3 className="text-lg font-bold text-center">Declare Victory</h3>
+    <div className="rounded-xl bg-surface-alt border border-border p-6 space-y-5 animate-slide-up">
+      <h3 className="text-sm font-semibold text-center">Declare Victory</h3>
 
-      {!showWordGuess && (
-        <form onSubmit={handleDeclareTeam} className="space-y-3">
-          <p className="text-sm text-text-secondary">
-            Method 1: Select <strong>{n}</strong> players (including yourself) that you
-            believe are on your team.
+      <div className="flex rounded-lg bg-surface border border-border p-0.5">
+        <button
+          type="button"
+          onClick={() => setShowWordGuess(false)}
+          className={`flex-1 rounded-md px-3 py-1.5 text-xs font-medium transition-colors ${
+            !showWordGuess ? 'bg-surface-hover text-text-primary' : 'text-text-secondary hover:text-text-primary'
+          }`}
+        >
+          Name teammates
+        </button>
+        <button
+          type="button"
+          onClick={() => setShowWordGuess(true)}
+          className={`flex-1 rounded-md px-3 py-1.5 text-xs font-medium transition-colors ${
+            showWordGuess ? 'bg-surface-hover text-text-primary' : 'text-text-secondary hover:text-text-primary'
+          }`}
+        >
+          Guess word
+        </button>
+      </div>
+
+      {!showWordGuess ? (
+        <form onSubmit={handleDeclareTeam} className="space-y-3 animate-fade-in">
+          <p className="text-xs text-text-secondary">
+            Select <strong>{n}</strong> players (including yourself) that you believe are on your team.
           </p>
-          <div className="space-y-1">
+          <div className="flex flex-wrap gap-1.5">
             {players.map((p) => {
               const isSelected = selectedPlayers.has(p.id);
               const isSelf = p.id === currentPlayer.id;
@@ -142,14 +164,14 @@ export function VictoryDeclaration({
                   type="button"
                   onClick={() => togglePlayer(p.id)}
                   disabled={isSelf}
-                  className={`w-full text-left rounded-lg px-3 py-2 text-sm transition-colors ${
+                  className={`rounded-full px-3 py-1.5 text-xs font-medium transition-colors ${
                     isSelected
-                      ? 'bg-accent/20 text-accent border border-accent/40'
-                      : 'bg-surface border border-border text-text-primary hover:bg-surface-hover'
+                      ? 'bg-accent/15 text-accent border border-accent/40'
+                      : 'bg-surface border border-border text-text-primary hover:border-border hover:bg-surface-hover'
                   } ${isSelf ? 'cursor-default' : 'cursor-pointer'}`}
                 >
                   {p.display_name}
-                  {isSelf && <span className="text-xs text-text-secondary ml-1">(you)</span>}
+                  {isSelf && <span className="ml-1 text-text-secondary">you</span>}
                 </button>
               );
             })}
@@ -157,33 +179,20 @@ export function VictoryDeclaration({
           <button
             type="submit"
             disabled={selectedPlayers.size < n}
-            className="w-full rounded-lg bg-accent px-4 py-2.5 text-sm font-medium text-white hover:bg-accent-hover transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+            className="w-full rounded-lg bg-accent px-4 py-2.5 text-sm font-medium text-white hover:bg-accent-hover disabled:opacity-40 disabled:cursor-not-allowed"
           >
-            Declare Team ({selectedPlayers.size}/{n} selected)
+            Declare Team ({selectedPlayers.size}/{n})
           </button>
         </form>
-      )}
-
-      <div className="flex items-center gap-3">
-        <div className="flex-1 h-px bg-border" />
-        <button
-          onClick={() => setShowWordGuess(!showWordGuess)}
-          className="text-xs text-text-secondary hover:text-text-primary transition-colors"
-        >
-          {showWordGuess ? 'Switch to team guess' : 'Or guess the other word'}
-        </button>
-        <div className="flex-1 h-px bg-border" />
-      </div>
-
-      {showWordGuess && (
-        <form onSubmit={handleDeclareWord} className="space-y-3">
-          <p className="text-sm text-text-secondary">
-            Method 2: Guess the other team's word. The round ends immediately.
+      ) : (
+        <form onSubmit={handleDeclareWord} className="space-y-3 animate-fade-in">
+          <p className="text-xs text-text-secondary">
+            Guess the other team's word. The round ends immediately.
           </p>
           <select
             value={wordGuess}
             onChange={(e) => setWordGuess(e.target.value)}
-            className="w-full rounded-lg bg-surface border border-border px-3 py-2 text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-team2"
+            className="w-full rounded-lg bg-surface border border-border px-3 py-2 text-sm text-text-primary focus:outline-none focus:border-team2"
           >
             <option value="">Select a word...</option>
             {game.game_words
@@ -197,7 +206,7 @@ export function VictoryDeclaration({
           <button
             type="submit"
             disabled={!wordGuess}
-            className="w-full rounded-lg bg-team2 px-4 py-2.5 text-sm font-medium text-white hover:bg-team2/80 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+            className="w-full rounded-lg bg-team2 px-4 py-2.5 text-sm font-medium text-white hover:bg-team2/80 disabled:opacity-40 disabled:cursor-not-allowed"
           >
             Guess Word
           </button>

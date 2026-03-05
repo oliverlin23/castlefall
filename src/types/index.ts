@@ -6,6 +6,11 @@ export interface Room {
   active: boolean;
 }
 
+export interface GameSettings {
+  wordCount: 12 | 18 | 24;
+  timerDurationMs: 30000 | 60000 | 90000;
+}
+
 export interface Game {
   id: string;
   room_id: string;
@@ -21,6 +26,8 @@ export interface Game {
   declaration_data: { selectedPlayers?: string[]; guessedWord?: string } | null;
   declaration_at: string | null;
   reveal_votes: string[];
+  settings: GameSettings;
+  winner_team: number | null;
 }
 
 export interface Player {

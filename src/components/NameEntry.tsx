@@ -15,26 +15,31 @@ export function NameEntry({ defaultName, onSubmit }: NameEntryProps) {
   }
 
   return (
-    <div className="flex flex-col items-center justify-center min-h-[60vh] gap-6">
-      <h2 className="text-2xl font-bold">Enter Your Name</h2>
-      <form onSubmit={handleSubmit} className="flex gap-3">
-        <input
-          type="text"
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          placeholder="Your name..."
-          autoFocus
-          maxLength={24}
-          className="rounded-lg bg-surface-alt border border-border px-4 py-2 text-lg text-text-primary placeholder:text-text-secondary focus:outline-none focus:ring-2 focus:ring-accent w-64"
-        />
-        <button
-          type="submit"
-          disabled={!name.trim()}
-          className="rounded-lg bg-accent px-5 py-2 text-lg font-medium text-white hover:bg-accent-hover transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-        >
-          Join
-        </button>
-      </form>
+    <div className="flex items-center justify-center min-h-[60vh] animate-fade-in">
+      <div className="w-full max-w-sm rounded-xl bg-surface-alt border border-border p-8 space-y-6">
+        <div className="space-y-1">
+          <h2 className="text-lg font-semibold">Join game</h2>
+          <p className="text-sm text-text-secondary">Enter a display name to get started.</p>
+        </div>
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <input
+            type="text"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            placeholder="Your name..."
+            autoFocus
+            maxLength={24}
+            className="w-full rounded-lg bg-surface border border-border px-4 py-2.5 text-sm text-text-primary placeholder:text-text-secondary focus:outline-none focus:border-accent"
+          />
+          <button
+            type="submit"
+            disabled={!name.trim()}
+            className="w-full rounded-lg bg-accent px-4 py-2.5 text-sm font-medium text-white hover:bg-accent-hover disabled:opacity-40 disabled:cursor-not-allowed"
+          >
+            Join
+          </button>
+        </form>
+      </div>
     </div>
   );
 }

@@ -11,9 +11,9 @@ export function WordList({ words, assignedWord }: WordListProps) {
         return (
           <div
             key={word}
-            className={`rounded-lg px-3 py-2.5 text-center text-sm font-medium transition-colors select-none ${
+            className={`rounded-lg px-3 py-2.5 text-center text-sm font-medium select-none transition-transform duration-150 hover:scale-[1.03] min-w-0 overflow-hidden text-ellipsis ${
               isAssigned
-                ? 'bg-highlight/20 text-highlight border-2 border-highlight ring-2 ring-highlight/30'
+                ? 'bg-highlight/15 text-highlight border border-highlight/40 animate-pulse-glow'
                 : 'bg-surface-alt border border-border text-text-primary'
             }`}
           >
