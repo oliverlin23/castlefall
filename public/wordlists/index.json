@@ -1,0 +1,8 @@
+[
+  { "id": "general", "name": "General", "file": "general.txt" },
+  { "id": "animals", "name": "Animals", "file": "animals.txt" },
+  { "id": "places", "name": "Places", "file": "places.txt" },
+  { "id": "food", "name": "Food & Drink", "file": "food.txt" },
+  { "id": "objects", "name": "Objects", "file": "objects.txt" },
+  { "id": "mythology", "name": "Mythology & Fantasy", "file": "mythology.txt" }
+]
