@@ -86,6 +86,12 @@ export function useGame(roomId: string | undefined, currentGameId: string | null
       const playerIds = players.map((p) => p.id);
       const { gameWords, teamWords, playerData } = buildGameData(playerIds, wordList, settings.wordCount);
 
+      const playerTeams: Record<string, { team: number; name: string }> = {};
+      for (const pd of playerData) {
+        const player = players.find((p) => p.id === pd.id);
+        playerTeams[pd.id] = { team: pd.team, name: player?.display_name ?? '' };
+      }
+
       const { data: newGame, error: gameError } = await supabase
         .from('games')
         .insert({
@@ -95,6 +101,7 @@ export function useGame(roomId: string | undefined, currentGameId: string | null
           team_words: teamWords,
           status: 'active',
           settings,
+          player_teams: playerTeams,
         })
         .select()
         .single();

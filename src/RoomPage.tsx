@@ -26,6 +26,7 @@ export function RoomPage({ roomName, onChangeRoom }: RoomPageProps) {
     registerPlayer,
     tryReconnect,
     leaveRoom,
+    kickPlayer,
     storedName,
   } = usePlayers(room?.id, room?.current_game_id);
   const {
@@ -266,6 +267,7 @@ export function RoomPage({ roomName, onChangeRoom }: RoomPageProps) {
             pastGames={pastGames}
             lastSettings={lastSettings}
             onStartGame={handleStartGame}
+            onKickPlayer={kickPlayer}
           />
         )}
 

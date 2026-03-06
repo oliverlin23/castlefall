@@ -151,6 +151,11 @@ export function usePlayers(roomId: string | undefined, activeGameId?: string | n
     setCurrentPlayer(null);
   }, [currentPlayer]);
 
+  const kickPlayer = useCallback(async (playerId: string) => {
+    if (!currentPlayer || playerId === currentPlayer.id) return;
+    await supabase.from('players').delete().eq('id', playerId);
+  }, [currentPlayer]);
+
   // Subscribe to player changes in this room
   useEffect(() => {
     if (!roomId) return;
@@ -233,6 +238,7 @@ export function usePlayers(roomId: string | undefined, activeGameId?: string | n
     registerPlayer,
     tryReconnect,
     leaveRoom,
+    kickPlayer,
     storedName: storedPlayer?.name ?? '',
   };
 }

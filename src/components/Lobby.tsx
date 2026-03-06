@@ -12,6 +12,7 @@ interface LobbyProps {
   pastGames: Game[];
   lastSettings: GameSettings;
   onStartGame: (wordListId: string, settings: GameSettings) => void;
+  onKickPlayer?: (playerId: string) => void;
 }
 
 const WORD_COUNTS = [12, 18, 24] as const;
@@ -29,6 +30,7 @@ export function Lobby({
   pastGames,
   lastSettings,
   onStartGame,
+  onKickPlayer,
 }: LobbyProps) {
   const [selectedList, setSelectedList] = useState(wordLists[0]?.id ?? '');
   const [rulesOpen, setRulesOpen] = useState(false);
@@ -80,7 +82,7 @@ export function Lobby({
             No one has joined yet. Share the link to invite players.
           </p>
         ) : (
-          <PlayerList players={players} currentPlayerId={currentPlayerId} />
+          <PlayerList players={players} currentPlayerId={currentPlayerId} onKick={onKickPlayer} />
         )}
       </div>
 

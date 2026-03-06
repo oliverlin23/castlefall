@@ -28,6 +28,7 @@ export interface Game {
   reveal_votes: string[];
   settings: GameSettings;
   winner_team: number | null;
+  player_teams: Record<string, { team: number; name: string }>;
 }
 
 export interface Player {

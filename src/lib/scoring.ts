@@ -39,22 +39,37 @@ export function computeWinner(game: Game, players: Player[]): number | null {
   return null;
 }
 
-export interface ScoreboardData {
-  team1Wins: number;
-  team2Wins: number;
+export interface PlayerScore {
+  id: string;
+  name: string;
+  wins: number;
+  losses: number;
   draws: number;
 }
 
-export function computeScoreboard(games: Game[]): ScoreboardData {
-  let team1Wins = 0;
-  let team2Wins = 0;
-  let draws = 0;
+export function computePlayerScores(games: Game[]): PlayerScore[] {
+  const scores: Record<string, PlayerScore> = {};
 
   for (const g of games) {
-    if (g.winner_team === 1) team1Wins++;
-    else if (g.winner_team === 2) team2Wins++;
-    else draws++;
+    const pt = g.player_teams;
+    if (!pt || typeof pt !== 'object') continue;
+
+    for (const [playerId, info] of Object.entries(pt)) {
+      if (!scores[playerId]) {
+        scores[playerId] = { id: playerId, name: info.name, wins: 0, losses: 0, draws: 0 };
+      }
+      const entry = scores[playerId];
+      entry.name = info.name;
+
+      if (g.winner_team == null) {
+        entry.draws++;
+      } else if (info.team === g.winner_team) {
+        entry.wins++;
+      } else {
+        entry.losses++;
+      }
+    }
   }
 
-  return { team1Wins, team2Wins, draws };
+  return Object.values(scores).sort((a, b) => b.wins - a.wins || a.losses - b.losses);
 }
