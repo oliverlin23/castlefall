@@ -28,6 +28,7 @@ export function RoomPage({ roomName, onChangeRoom }: RoomPageProps) {
     leaveRoom,
     kickPlayer,
     storedName,
+    playersLoaded,
   } = usePlayers(room?.id, room?.current_game_id);
   const {
     game,
@@ -63,10 +64,10 @@ export function RoomPage({ roomName, onChangeRoom }: RoomPageProps) {
 
   // Deactivate room when all players leave
   useEffect(() => {
-    if (room?.id && players.length === 0 && currentPlayer === null && joinAttempted) {
+    if (room?.id && players.length === 0 && currentPlayer === null && joinAttempted && playersLoaded && !reconnecting) {
       deactivateRoom();
     }
-  }, [room?.id, players.length, currentPlayer, joinAttempted, deactivateRoom]);
+  }, [room?.id, players.length, currentPlayer, joinAttempted, playersLoaded, reconnecting, deactivateRoom]);
 
   // Sound effects for phase changes and player joins
   useEffect(() => {
@@ -137,9 +138,9 @@ export function RoomPage({ roomName, onChangeRoom }: RoomPageProps) {
   const handleDeclareWord = useCallback(
     (word: string) => {
       if (!currentPlayer) return;
-      declareWord(currentPlayer.id, currentPlayer.display_name, word);
+      declareWord(currentPlayer.id, currentPlayer.display_name, word, players);
     },
-    [currentPlayer, declareWord],
+    [currentPlayer, declareWord, players],
   );
 
   const handleTimerExpired = useCallback(() => {

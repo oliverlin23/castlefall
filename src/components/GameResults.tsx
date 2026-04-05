@@ -29,10 +29,12 @@ function outcomeMessage(game: Game, players: Player[]): string | null {
   }
 
   if (game.declaration_type === 'word') {
+    const guessedWord = game.declaration_data?.guessedWord;
+    const wordDisplay = guessedWord ? ` "${guessedWord}"` : '';
     if (game.winner_team && declarer?.team === game.winner_team) {
-      return `${declarerName} correctly guessed the other team's word`;
+      return `${declarerName} correctly guessed the other team's word:${wordDisplay}`;
     }
-    return `${declarerName} guessed wrong — other team wins`;
+    return `${declarerName} guessed${wordDisplay} — wrong! Other team wins`;
   }
 
   return null;

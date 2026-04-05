@@ -33,6 +33,7 @@ export function usePlayers(roomId: string | undefined, activeGameId?: string | n
   const [players, setPlayers] = useState<Player[]>([]);
   const [currentPlayer, setCurrentPlayer] = useState<Player | null>(null);
   const [reconnecting, setReconnecting] = useState(false);
+  const [playersLoaded, setPlayersLoaded] = useState(false);
   const heartbeatRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const pruneRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
@@ -44,6 +45,7 @@ export function usePlayers(roomId: string | undefined, activeGameId?: string | n
       .eq('room_id', roomId)
       .order('joined_at', { ascending: true });
     if (data) setPlayers(data);
+    setPlayersLoaded(true);
   }, [roomId]);
 
   const registerPlayer = useCallback(
@@ -240,5 +242,6 @@ export function usePlayers(roomId: string | undefined, activeGameId?: string | n
     leaveRoom,
     kickPlayer,
     storedName: storedPlayer?.name ?? '',
+    playersLoaded,
   };
 }

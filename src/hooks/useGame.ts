@@ -163,8 +163,16 @@ export function useGame(roomId: string | undefined, currentGameId: string | null
   );
 
   const declareWord = useCallback(
-    async (playerId: string, playerName: string, guessedWord: string) => {
+    async (playerId: string, playerName: string, guessedWord: string, players: Player[]) => {
       if (!game?.id) return false;
+
+      const pendingGame: Game = {
+        ...game,
+        declaration_type: 'word',
+        declaration_player_id: playerId,
+        declaration_data: { guessedWord },
+      };
+      const winner = computeWinner(pendingGame, players);
 
       const { error } = await supabase
         .from('games')
@@ -176,12 +184,13 @@ export function useGame(roomId: string | undefined, currentGameId: string | null
           declaration_at: new Date().toISOString(),
           status: 'revealed',
           ended_at: new Date().toISOString(),
+          winner_team: winner,
         })
         .eq('id', game.id);
 
       return !error;
     },
-    [game?.id],
+    [game],
   );
 
   const voteToReveal = useCallback(
