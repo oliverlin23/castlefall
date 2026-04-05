@@ -179,9 +179,10 @@ export function VictoryDeclaration({
           <button
             type="submit"
             disabled={selectedPlayers.size < n}
+            title={`Select at least ${n} players (including yourself)`}
             className="w-full rounded-lg bg-accent px-4 py-2.5 text-sm font-medium text-white hover:bg-accent-hover disabled:opacity-40 disabled:cursor-not-allowed"
           >
-            Declare Team ({selectedPlayers.size}/{n})
+            Declare Team ({selectedPlayers.size} selected, min {n})
           </button>
         </form>
       ) : (

@@ -34,7 +34,7 @@ export function useRoom(roomName: string) {
     if (inactive) {
       const { data: reactivated } = await supabase
         .from('rooms')
-        .update({ active: true, current_game_id: null })
+        .update({ active: true })
         .eq('id', inactive.id)
         .select()
         .single();
