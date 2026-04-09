@@ -1,8 +1,6 @@
 import { useEffect, useState, useCallback } from 'react';
 import { supabase } from '../lib/supabase';
-import { buildGameData } from '../lib/gameLogic';
-import { computeWinner } from '../lib/scoring';
-import type { Game, GameSettings, Player } from '../types';
+import type { Game, GameSettings } from '../types';
 
 const DEFAULT_SETTINGS: GameSettings = { wordCount: 18, timerDurationMs: 60000 };
 
@@ -45,108 +43,57 @@ export function useGame(roomId: string | undefined, currentGameId: string | null
       });
   }, [roomId]);
 
-  // Subscribe to game updates
-  useEffect(() => {
-    if (!game?.id) return;
-
-    const channel = supabase
-      .channel(`game-${game.id}`)
-      .on(
-        'postgres_changes',
-        {
-          event: 'UPDATE',
-          schema: 'public',
-          table: 'games',
-          filter: `id=eq.${game.id}`,
-        },
-        (payload) => {
-          const updated = payload.new as Game;
-          setGame(updated);
-          if (updated.status === 'revealed') {
-            setPastGames((prev) => {
-              if (prev.some((g) => g.id === updated.id)) {
-                return prev.map((g) => (g.id === updated.id ? updated : g));
-              }
-              return [updated, ...prev];
-            });
+  /** Handle game update from the unified subscription. */
+  const handleGameUpdate = useCallback(
+    (updated: Game) => {
+      // Only process updates for the current game
+      if (game?.id && updated.id === game.id) {
+        setGame(updated);
+      }
+      if (updated.status === 'revealed') {
+        setPastGames((prev) => {
+          if (prev.some((g) => g.id === updated.id)) {
+            return prev.map((g) => (g.id === updated.id ? updated : g));
           }
-        },
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [game?.id]);
+          return [updated, ...prev];
+        });
+      }
+    },
+    [game?.id],
+  );
 
   const startGame = useCallback(
-    async (players: Player[], wordList: string[], wordListName: string, settings: GameSettings = DEFAULT_SETTINGS) => {
-      if (!roomId || players.length < 4) return null;
+    async (wordList: string[], wordListName: string, settings: GameSettings = DEFAULT_SETTINGS) => {
+      if (!roomId) return null;
 
-      const playerIds = players.map((p) => p.id);
-      const { gameWords, teamWords, playerData } = buildGameData(playerIds, wordList, settings.wordCount);
+      const { data: gameId, error } = await supabase.rpc('start_game_atomic', {
+        p_room_id: roomId,
+        p_words: wordList,
+        p_word_list_name: wordListName,
+        p_settings: settings,
+      });
 
-      const playerTeams: Record<string, { team: number; name: string }> = {};
-      for (const pd of playerData) {
-        const player = players.find((p) => p.id === pd.id);
-        playerTeams[pd.id] = { team: pd.team, name: player?.display_name ?? '' };
-      }
-
-      const { data: newGame, error: gameError } = await supabase
-        .from('games')
-        .insert({
-          room_id: roomId,
-          word_list_name: wordListName,
-          game_words: gameWords,
-          team_words: teamWords,
-          status: 'active',
-          settings,
-          player_teams: playerTeams,
-        })
-        .select()
-        .single();
-
-      if (gameError || !newGame) {
-        console.error('Failed to create game:', gameError);
+      if (error || !gameId) {
+        console.error('Failed to start game:', error);
         return null;
       }
 
-      const updatePromises = playerData.map((pd) =>
-        supabase
-          .from('players')
-          .update({
-            game_id: newGame.id,
-            team: pd.team,
-            assigned_word: pd.assignedWord,
-            word_order: pd.wordOrder,
-          })
-          .eq('id', pd.id),
-      );
-      await Promise.all(updatePromises);
+      const { data: newGame } = await supabase
+        .from('games')
+        .select('*')
+        .eq('id', gameId)
+        .single();
 
-      await supabase
-        .from('rooms')
-        .update({ current_game_id: newGame.id })
-        .eq('id', roomId);
-
-      setGame(newGame);
+      if (newGame) setGame(newGame);
       return newGame;
     },
     [roomId],
   );
 
-  const revealGame = useCallback(async (players?: Player[]) => {
+  const revealGame = useCallback(async () => {
     if (!game?.id) return;
-    const winner = players ? computeWinner(game, players) : null;
-    await supabase
-      .from('games')
-      .update({
-        status: 'revealed',
-        ended_at: new Date().toISOString(),
-        winner_team: winner,
-      })
-      .eq('id', game.id);
-  }, [game]);
+    await supabase.rpc('reveal_game', { p_game_id: game.id });
+  }, [game?.id]);
 
   const declareTeam = useCallback(
     async (_playerId: string, _playerName: string, selectedPlayerIds: string[]) => {
@@ -163,34 +110,19 @@ export function useGame(roomId: string | undefined, currentGameId: string | null
   );
 
   const declareWord = useCallback(
-    async (playerId: string, playerName: string, guessedWord: string, players: Player[]) => {
+    async (playerId: string, playerName: string, guessedWord: string) => {
       if (!game?.id) return false;
 
-      const pendingGame: Game = {
-        ...game,
-        declaration_type: 'word',
-        declaration_player_id: playerId,
-        declaration_data: { guessedWord },
-      };
-      const winner = computeWinner(pendingGame, players);
+      const { data, error } = await supabase.rpc('declare_word_atomic', {
+        p_game_id: game.id,
+        p_player_id: playerId,
+        p_player_name: playerName,
+        p_guessed_word: guessedWord,
+      });
 
-      const { error } = await supabase
-        .from('games')
-        .update({
-          declaration_type: 'word',
-          declaration_player_id: playerId,
-          declaration_player_name: playerName,
-          declaration_data: { guessedWord },
-          declaration_at: new Date().toISOString(),
-          status: 'revealed',
-          ended_at: new Date().toISOString(),
-          winner_team: winner,
-        })
-        .eq('id', game.id);
-
-      return !error;
+      return !error && data === true;
     },
-    [game],
+    [game?.id],
   );
 
   const voteToReveal = useCallback(
@@ -216,5 +148,5 @@ export function useGame(roomId: string | undefined, currentGameId: string | null
     [game?.id],
   );
 
-  return { game, pastGames, loading, startGame, revealGame, declareTeam, declareWord, voteToReveal, unvoteToReveal };
+  return { game, pastGames, loading, startGame, revealGame, declareTeam, declareWord, voteToReveal, unvoteToReveal, handleGameUpdate };
 }

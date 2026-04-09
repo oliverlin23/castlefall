@@ -1,9 +1,8 @@
 import { useEffect, useState, useCallback, useRef } from 'react';
-import { supabase } from '../lib/supabase';
+import { supabase, supabaseUrl, supabaseAnonKey } from '../lib/supabase';
 import type { Player } from '../types';
 
 const PLAYER_STORAGE_KEY = 'castlefall_player';
-const STALE_THRESHOLD_MS = 5 * 60 * 1000;
 
 interface StoredPlayer {
   id: string;
@@ -63,16 +62,16 @@ export function usePlayers(roomId: string | undefined, activeGameId?: string | n
         .single();
 
       if (existing) {
-        const { data: updated } = await supabase
+        await supabase.rpc('update_heartbeat', { p_player_id: existing.id });
+        const { data: refreshed } = await supabase
           .from('players')
-          .update({ last_seen: new Date().toISOString() })
+          .select('*')
           .eq('id', existing.id)
-          .select()
           .single();
-        if (updated) {
-          setCurrentPlayer(updated);
-          storePlayer(updated.id, trimmed, roomId);
-          return updated;
+        if (refreshed) {
+          setCurrentPlayer(refreshed);
+          storePlayer(refreshed.id, trimmed, roomId);
+          return refreshed;
         }
       }
 
@@ -110,14 +109,18 @@ export function usePlayers(roomId: string | undefined, activeGameId?: string | n
         .single();
 
       if (data) {
-        await supabase
+        await supabase.rpc('update_heartbeat', { p_player_id: data.id });
+        const { data: refreshed } = await supabase
           .from('players')
-          .update({ last_seen: new Date().toISOString() })
-          .eq('id', data.id);
-        setCurrentPlayer({ ...data, last_seen: new Date().toISOString() });
-        storePlayer(data.id, data.display_name, roomId);
+          .select('*')
+          .eq('id', data.id)
+          .single();
+        if (refreshed) {
+          setCurrentPlayer(refreshed);
+          storePlayer(refreshed.id, refreshed.display_name, roomId);
+        }
         setReconnecting(false);
-        return data;
+        return refreshed;
       }
     }
 
@@ -131,14 +134,18 @@ export function usePlayers(roomId: string | undefined, activeGameId?: string | n
         .single();
 
       if (data) {
-        await supabase
+        await supabase.rpc('update_heartbeat', { p_player_id: data.id });
+        const { data: refreshed } = await supabase
           .from('players')
-          .update({ last_seen: new Date().toISOString() })
-          .eq('id', data.id);
-        setCurrentPlayer({ ...data, last_seen: new Date().toISOString() });
-        storePlayer(data.id, data.display_name, roomId);
+          .select('*')
+          .eq('id', data.id)
+          .single();
+        if (refreshed) {
+          setCurrentPlayer(refreshed);
+          storePlayer(refreshed.id, refreshed.display_name, roomId);
+        }
         setReconnecting(false);
-        return data;
+        return refreshed;
       }
     }
 
@@ -148,88 +155,88 @@ export function usePlayers(roomId: string | undefined, activeGameId?: string | n
 
   const leaveRoom = useCallback(async () => {
     if (!currentPlayer) return;
-    await supabase.from('players').delete().eq('id', currentPlayer.id);
+    await supabase.rpc('leave_room', { p_player_id: currentPlayer.id });
     clearStoredPlayer();
     setCurrentPlayer(null);
   }, [currentPlayer]);
 
   const kickPlayer = useCallback(async (playerId: string) => {
     if (!currentPlayer || playerId === currentPlayer.id) return;
-    await supabase.from('players').delete().eq('id', playerId);
+    await supabase.rpc('kick_player', {
+      p_kicker_id: currentPlayer.id,
+      p_target_id: playerId,
+    });
   }, [currentPlayer]);
 
-  // Subscribe to player changes in this room
+  // Fetch players on mount
   useEffect(() => {
     if (!roomId) return;
     fetchPlayers();
-
-    const channel = supabase
-      .channel(`players-${roomId}`)
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'players',
-          filter: `room_id=eq.${roomId}`,
-        },
-        (payload) => {
-          if (payload.eventType === 'INSERT') {
-            setPlayers((prev) => {
-              if (prev.some((p) => p.id === (payload.new as Player).id)) return prev;
-              return [...prev, payload.new as Player];
-            });
-          } else if (payload.eventType === 'UPDATE') {
-            const updated = payload.new as Player;
-            setPlayers((prev) =>
-              prev.map((p) => (p.id === updated.id ? updated : p)),
-            );
-            setCurrentPlayer((cur) => (cur && cur.id === updated.id ? updated : cur));
-          } else if (payload.eventType === 'DELETE') {
-            const deletedId = (payload.old as Player).id;
-            setPlayers((prev) => prev.filter((p) => p.id !== deletedId));
-            setCurrentPlayer((cur) => (cur && cur.id === deletedId ? null : cur));
-          }
-        },
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
   }, [roomId, fetchPlayers]);
+
+  /** Handle player events from the unified subscription. */
+  const handlePlayerEvent = useCallback(
+    (eventType: string, payload: { new?: Player; old?: Player }) => {
+      if (eventType === 'INSERT' && payload.new) {
+        const newPlayer = payload.new;
+        setPlayers((prev) => {
+          if (prev.some((p) => p.id === newPlayer.id)) return prev;
+          return [...prev, newPlayer];
+        });
+      } else if (eventType === 'UPDATE' && payload.new) {
+        const updated = payload.new;
+        setPlayers((prev) =>
+          prev.map((p) => (p.id === updated.id ? updated : p)),
+        );
+        setCurrentPlayer((cur) => (cur && cur.id === updated.id ? updated : cur));
+      } else if (eventType === 'DELETE' && payload.old) {
+        const deletedId = payload.old.id;
+        setPlayers((prev) => prev.filter((p) => p.id !== deletedId));
+        setCurrentPlayer((cur) => (cur && cur.id === deletedId ? null : cur));
+      }
+    },
+    [],
+  );
 
   // Heartbeat + periodic stale-player pruning
   useEffect(() => {
     if (!currentPlayer || !roomId) return;
 
     heartbeatRef.current = setInterval(async () => {
-      await supabase
-        .from('players')
-        .update({ last_seen: new Date().toISOString() })
-        .eq('id', currentPlayer.id);
+      await supabase.rpc('update_heartbeat', { p_player_id: currentPlayer.id });
     }, 30_000);
 
     pruneRef.current = setInterval(async () => {
-      const cutoff = new Date(Date.now() - STALE_THRESHOLD_MS).toISOString();
-      let query = supabase
-        .from('players')
-        .delete()
-        .eq('room_id', roomId)
-        .lt('last_seen', cutoff);
-
-      if (activeGameId) {
-        query = query.or(`game_id.is.null,game_id.neq.${activeGameId}`);
-      }
-
-      await query;
+      await supabase.rpc('prune_stale_players', { p_threshold_minutes: 5 });
     }, 60_000);
 
     return () => {
       if (heartbeatRef.current) clearInterval(heartbeatRef.current);
       if (pruneRef.current) clearInterval(pruneRef.current);
     };
-  }, [currentPlayer?.id, roomId, activeGameId]);
+  }, [currentPlayer?.id, roomId]);
+
+  // Immediate disconnect on tab close via fetch+keepalive.
+  // This does NOT fire during in-app name changes (SPA stays loaded).
+  useEffect(() => {
+    if (!currentPlayer) return;
+
+    const handleUnload = () => {
+      fetch(`${supabaseUrl}/rest/v1/rpc/leave_room`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'apikey': supabaseAnonKey,
+          'Authorization': `Bearer ${supabaseAnonKey}`,
+        },
+        body: JSON.stringify({ p_player_id: currentPlayer.id }),
+        keepalive: true,
+      });
+    };
+
+    window.addEventListener('beforeunload', handleUnload);
+    return () => window.removeEventListener('beforeunload', handleUnload);
+  }, [currentPlayer?.id]);
 
   const storedPlayer = getStoredPlayer();
 
@@ -241,6 +248,7 @@ export function usePlayers(roomId: string | undefined, activeGameId?: string | n
     tryReconnect,
     leaveRoom,
     kickPlayer,
+    handlePlayerEvent,
     storedName: storedPlayer?.name ?? '',
     playersLoaded,
   };

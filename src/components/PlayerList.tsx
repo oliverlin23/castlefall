@@ -4,6 +4,7 @@ interface PlayerListProps {
   players: Player[];
   currentPlayerId?: string;
   showTeams?: boolean;
+  isHost?: boolean;
   onKick?: (playerId: string) => void;
 }
 
@@ -23,7 +24,7 @@ function getAvatarColor(name: string): string {
   return avatarColors[Math.abs(hash) % avatarColors.length];
 }
 
-export function PlayerList({ players, currentPlayerId, showTeams, onKick }: PlayerListProps) {
+export function PlayerList({ players, currentPlayerId, showTeams, isHost, onKick }: PlayerListProps) {
   const teamColors: Record<number, string> = {
     1: 'text-team1',
     2: 'text-team2',
@@ -63,7 +64,7 @@ export function PlayerList({ players, currentPlayerId, showTeams, onKick }: Play
                 )}
               </span>
             )}
-            {onKick && !isSelf && (
+            {isHost && onKick && !isSelf && (
               <button
                 onClick={() => onKick(player.id)}
                 className="opacity-0 group-hover:opacity-100 rounded-md p-0.5 text-text-secondary hover:text-team2 transition-opacity"
