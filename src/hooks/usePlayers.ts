@@ -28,7 +28,7 @@ function clearStoredPlayer() {
   localStorage.removeItem(PLAYER_STORAGE_KEY);
 }
 
-export function usePlayers(roomId: string | undefined, activeGameId?: string | null) {
+export function usePlayers(roomId: string | undefined, _activeGameId?: string | null) {
   const [players, setPlayers] = useState<Player[]>([]);
   const [currentPlayer, setCurrentPlayer] = useState<Player | null>(null);
   const [reconnecting, setReconnecting] = useState(false);
