@@ -1,8 +1,9 @@
-import { useEffect, useCallback, useState, useRef } from 'react';
+import { useEffect, useCallback, useState, useRef, useMemo } from 'react';
 import { useRoom } from './hooks/useRoom';
 import { usePlayers } from './hooks/usePlayers';
 import { useGame } from './hooks/useGame';
 import { useWordLists } from './hooks/useWordLists';
+import { useRoomSubscription } from './hooks/useRoomSubscription';
 import { RoomSelector } from './components/RoomSelector';
 import { NameEntry } from './components/NameEntry';
 import { Lobby } from './components/Lobby';
@@ -18,7 +19,7 @@ interface RoomPageProps {
 }
 
 export function RoomPage({ roomName, onChangeRoom }: RoomPageProps) {
-  const { room, loading: roomLoading, deactivateRoom } = useRoom(roomName);
+  const { room, loading: roomLoading, deactivateRoom, handleRoomUpdate } = useRoom(roomName);
   const {
     players,
     currentPlayer,
@@ -27,6 +28,7 @@ export function RoomPage({ roomName, onChangeRoom }: RoomPageProps) {
     tryReconnect,
     leaveRoom,
     kickPlayer,
+    handlePlayerEvent,
     storedName,
     playersLoaded,
   } = usePlayers(room?.id, room?.current_game_id);
@@ -39,7 +41,16 @@ export function RoomPage({ roomName, onChangeRoom }: RoomPageProps) {
     declareWord,
     voteToReveal,
     unvoteToReveal,
+    handleGameUpdate,
   } = useGame(room?.id, room?.current_game_id);
+
+  // Unified realtime subscription for room, players, and games
+  const subscriptionCallbacks = useMemo(() => ({
+    onRoomUpdate: handleRoomUpdate,
+    onPlayerEvent: handlePlayerEvent,
+    onGameUpdate: handleGameUpdate,
+  }), [handleRoomUpdate, handlePlayerEvent, handleGameUpdate]);
+  useRoomSubscription(room?.id, subscriptionCallbacks);
   const { lists: wordLists, loading: wordListsLoading, loadWordList } = useWordLists();
   const [joinAttempted, setJoinAttempted] = useState(false);
   const [lastWordListId, setLastWordListId] = useState('general');
@@ -111,9 +122,9 @@ export function RoomPage({ roomName, onChangeRoom }: RoomPageProps) {
       const words = await loadWordList(wordListId);
       setLastWordListId(wordListId);
       setLastSettings(settings);
-      await startGame(players, words, wordListId, settings);
+      await startGame(words, wordListId, settings);
     },
-    [players, startGame, loadWordList],
+    [players.length, startGame, loadWordList],
   );
 
   const handleNewRound = useCallback(
@@ -122,9 +133,9 @@ export function RoomPage({ roomName, onChangeRoom }: RoomPageProps) {
       const words = await loadWordList(wordListId);
       setLastWordListId(wordListId);
       setLastSettings(settings);
-      await startGame(players, words, wordListId, settings);
+      await startGame(words, wordListId, settings);
     },
-    [players, startGame, loadWordList],
+    [players.length, startGame, loadWordList],
   );
 
   const handleDeclareTeam = useCallback(
@@ -138,17 +149,17 @@ export function RoomPage({ roomName, onChangeRoom }: RoomPageProps) {
   const handleDeclareWord = useCallback(
     (word: string) => {
       if (!currentPlayer) return;
-      declareWord(currentPlayer.id, currentPlayer.display_name, word, players);
+      declareWord(currentPlayer.id, currentPlayer.display_name, word);
     },
-    [currentPlayer, declareWord, players],
+    [currentPlayer, declareWord],
   );
 
   const handleTimerExpired = useCallback(() => {
     if (!game || !currentPlayer) return;
     if (game.declaration_player_id === currentPlayer.id) {
-      revealGame(players);
+      revealGame();
     }
-  }, [game, currentPlayer, revealGame, players]);
+  }, [game, currentPlayer, revealGame]);
 
   const handleVoteToReveal = useCallback(() => {
     if (!currentPlayer) return;

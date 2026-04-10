@@ -44,6 +44,7 @@ export function Lobby({
   }
 
   const canStart = players.length >= 4 && !!selectedList && !wordListsLoading;
+  const isHost = !!currentPlayerId && players.length > 0 && players[0].id === currentPlayerId;
 
   function handleCopyLink() {
     navigator.clipboard.writeText(window.location.href).then(() => {
@@ -82,7 +83,7 @@ export function Lobby({
             No one has joined yet. Share the link to invite players.
           </p>
         ) : (
-          <PlayerList players={players} currentPlayerId={currentPlayerId} onKick={onKickPlayer} />
+          <PlayerList players={players} currentPlayerId={currentPlayerId} isHost={isHost} onKick={onKickPlayer} />
         )}
       </div>
 
