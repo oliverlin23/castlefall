@@ -8,22 +8,37 @@ export interface RoomSubscriptionCallbacks {
   onGameUpdate: (game: Game) => void;
 }
 
+interface PresenceState {
+  playerId: string;
+  displayName: string;
+}
+
 /**
  * Consolidates room, players, and game subscriptions into a single
- * Supabase Realtime channel per room. Chat stays separate (lazy).
+ * Supabase Realtime channel per room. Also handles Presence tracking
+ * for instant disconnect detection (replaces heartbeat polling).
  */
 export function useRoomSubscription(
   roomId: string | undefined,
   callbacks: RoomSubscriptionCallbacks,
+  currentPlayerId: string | undefined,
+  currentPlayerName: string | undefined,
+  players: Player[],
 ) {
   const cbRef = useRef(callbacks);
   cbRef.current = callbacks;
+  const playersRef = useRef(players);
+  playersRef.current = players;
 
   useEffect(() => {
     if (!roomId) return;
 
     const channel = supabase
-      .channel(`room-all-${roomId}`)
+      .channel(`room-all-${roomId}`, {
+        config: {
+          presence: { key: currentPlayerId ?? '_unregistered' },
+        },
+      })
       .on(
         'postgres_changes',
         {
@@ -67,10 +82,45 @@ export function useRoomSubscription(
           }
         },
       )
-      .subscribe();
+      .on('presence', { event: 'leave' }, ({ leftPresences }) => {
+        // When a client disconnects, clean up their player record.
+        // Only the host (first player in list) handles cleanup to avoid
+        // N clients all calling leave_room simultaneously.
+        const currentPlayers = playersRef.current;
+        const hostId = currentPlayers.length > 0 ? currentPlayers[0].id : null;
+
+        for (const presence of leftPresences) {
+          const state = presence as unknown as PresenceState;
+          const departedId = state.playerId;
+          if (!departedId || departedId === '_unregistered') continue;
+
+          // Determine if we should handle this cleanup
+          let shouldCleanup = false;
+          if (hostId === currentPlayerId) {
+            // We are the host — handle it
+            shouldCleanup = true;
+          } else if (departedId === hostId) {
+            // The host left — the next player in line handles it
+            const nextHost = currentPlayers.find((p) => p.id !== departedId);
+            shouldCleanup = nextHost?.id === currentPlayerId;
+          }
+
+          if (shouldCleanup) {
+            supabase.rpc('leave_room', { p_player_id: departedId }).then();
+          }
+        }
+      })
+      .subscribe(async (status) => {
+        if (status === 'SUBSCRIBED' && currentPlayerId && currentPlayerName) {
+          await channel.track({
+            playerId: currentPlayerId,
+            displayName: currentPlayerName,
+          } satisfies PresenceState);
+        }
+      });
 
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [roomId]);
+  }, [roomId, currentPlayerId, currentPlayerName]);
 }

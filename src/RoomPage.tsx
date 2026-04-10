@@ -31,7 +31,7 @@ export function RoomPage({ roomName, onChangeRoom }: RoomPageProps) {
     handlePlayerEvent,
     storedName,
     playersLoaded,
-  } = usePlayers(room?.id, room?.current_game_id);
+  } = usePlayers(room?.id);
   const {
     game,
     pastGames,
@@ -50,7 +50,7 @@ export function RoomPage({ roomName, onChangeRoom }: RoomPageProps) {
     onPlayerEvent: handlePlayerEvent,
     onGameUpdate: handleGameUpdate,
   }), [handleRoomUpdate, handlePlayerEvent, handleGameUpdate]);
-  useRoomSubscription(room?.id, subscriptionCallbacks);
+  useRoomSubscription(room?.id, subscriptionCallbacks, currentPlayer?.id, currentPlayer?.display_name, players);
   const { lists: wordLists, loading: wordListsLoading, loadWordList } = useWordLists();
   const [joinAttempted, setJoinAttempted] = useState(false);
   const [lastWordListId, setLastWordListId] = useState('general');

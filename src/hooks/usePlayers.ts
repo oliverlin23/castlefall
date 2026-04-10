@@ -1,5 +1,5 @@
-import { useEffect, useState, useCallback, useRef } from 'react';
-import { supabase, supabaseUrl, supabaseAnonKey } from '../lib/supabase';
+import { useEffect, useState, useCallback } from 'react';
+import { supabase } from '../lib/supabase';
 import type { Player } from '../types';
 
 const PLAYER_STORAGE_KEY = 'castlefall_player';
@@ -28,13 +28,11 @@ function clearStoredPlayer() {
   localStorage.removeItem(PLAYER_STORAGE_KEY);
 }
 
-export function usePlayers(roomId: string | undefined, _activeGameId?: string | null) {
+export function usePlayers(roomId: string | undefined) {
   const [players, setPlayers] = useState<Player[]>([]);
   const [currentPlayer, setCurrentPlayer] = useState<Player | null>(null);
   const [reconnecting, setReconnecting] = useState(false);
   const [playersLoaded, setPlayersLoaded] = useState(false);
-  const heartbeatRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const pruneRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const fetchPlayers = useCallback(async () => {
     if (!roomId) return;
@@ -197,46 +195,6 @@ export function usePlayers(roomId: string | undefined, _activeGameId?: string | 
     },
     [],
   );
-
-  // Heartbeat + periodic stale-player pruning
-  useEffect(() => {
-    if (!currentPlayer || !roomId) return;
-
-    heartbeatRef.current = setInterval(async () => {
-      await supabase.rpc('update_heartbeat', { p_player_id: currentPlayer.id });
-    }, 30_000);
-
-    pruneRef.current = setInterval(async () => {
-      await supabase.rpc('prune_stale_players', { p_threshold_minutes: 5 });
-    }, 60_000);
-
-    return () => {
-      if (heartbeatRef.current) clearInterval(heartbeatRef.current);
-      if (pruneRef.current) clearInterval(pruneRef.current);
-    };
-  }, [currentPlayer?.id, roomId]);
-
-  // Immediate disconnect on tab close via fetch+keepalive.
-  // This does NOT fire during in-app name changes (SPA stays loaded).
-  useEffect(() => {
-    if (!currentPlayer) return;
-
-    const handleUnload = () => {
-      fetch(`${supabaseUrl}/rest/v1/rpc/leave_room`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'apikey': supabaseAnonKey,
-          'Authorization': `Bearer ${supabaseAnonKey}`,
-        },
-        body: JSON.stringify({ p_player_id: currentPlayer.id }),
-        keepalive: true,
-      });
-    };
-
-    window.addEventListener('beforeunload', handleUnload);
-    return () => window.removeEventListener('beforeunload', handleUnload);
-  }, [currentPlayer?.id]);
 
   const storedPlayer = getStoredPlayer();
 

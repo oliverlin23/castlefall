@@ -46,7 +46,8 @@ as $$
 declare
   v_game_id uuid;
   v_player record;
-  v_players record[];
+  v_player_ids uuid[];
+  v_player_names text[];
   v_player_count int;
   v_word_count int;
   v_game_words jsonb;
@@ -55,22 +56,21 @@ declare
   v_team_words jsonb;
   v_player_teams jsonb := '{}'::jsonb;
   v_half int;
-  v_idx int := 0;
   v_team int;
   v_assigned_word text;
   v_word_order jsonb;
 begin
   -- Fetch all players in room, shuffled for random team assignment
-  v_player_count := 0;
-  for v_player in
+  select array_agg(id), array_agg(display_name)
+  into v_player_ids, v_player_names
+  from (
     select id, display_name
     from players
     where room_id = p_room_id
     order by random()
-  loop
-    v_player_count := v_player_count + 1;
-    v_players[v_player_count] := v_player;
-  end loop;
+  ) sub;
+
+  v_player_count := coalesce(array_length(v_player_ids, 1), 0);
 
   if v_player_count < 4 then
     raise exception 'Need at least 4 players to start a game (have %)', v_player_count;
@@ -113,11 +113,9 @@ begin
 
   -- Assign teams and words to each player
   v_half := ceil(v_player_count::numeric / 2);
-  v_idx := 0;
 
   for i in 1..v_player_count loop
-    v_idx := v_idx + 1;
-    v_team := case when v_idx <= v_half then 1 else 2 end;
+    v_team := case when i <= v_half then 1 else 2 end;
     v_assigned_word := case when v_team = 1 then v_team1_word else v_team2_word end;
 
     -- Generate a shuffled word order for this player
@@ -134,12 +132,12 @@ begin
       team = v_team,
       assigned_word = v_assigned_word,
       word_order = v_word_order
-    where id = v_players[i].id;
+    where id = v_player_ids[i];
 
     -- Build the player_teams mapping
     v_player_teams := v_player_teams || jsonb_build_object(
-      v_players[i].id::text,
-      jsonb_build_object('team', v_team, 'name', v_players[i].display_name)
+      v_player_ids[i]::text,
+      jsonb_build_object('team', v_team, 'name', v_player_names[i])
     );
   end loop;
 
