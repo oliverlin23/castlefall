@@ -119,7 +119,17 @@ export function useRoomSubscription(
         }
       });
 
+    // Explicitly untrack on tab close for instant disconnect detection.
+    // Without this, Supabase detects the WebSocket drop after ~5-10s.
+    const handleBeforeUnload = () => {
+      if (currentPlayerId) {
+        channel.untrack();
+      }
+    };
+    window.addEventListener('beforeunload', handleBeforeUnload);
+
     return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload);
       supabase.removeChannel(channel);
     };
   }, [roomId, currentPlayerId, currentPlayerName]);
