@@ -29,7 +29,18 @@ export function Chat({ roomId, playerName }: ChatProps) {
         },
         (payload) => {
           const msg = payload.new as ChatMessage;
-          setMessages((prev) => [...prev, msg]);
+          setMessages((prev) => {
+            // Deduplicate: replace optimistic message if it matches
+            const optimisticIdx = prev.findIndex(
+              (m) => m.id.startsWith('optimistic-') && m.player_name === msg.player_name && m.message === msg.message,
+            );
+            if (optimisticIdx !== -1) {
+              const next = [...prev];
+              next[optimisticIdx] = msg;
+              return next;
+            }
+            return [...prev, msg];
+          });
           if (!openRef.current) {
             setUnread((prev) => prev + 1);
           }
@@ -67,7 +78,17 @@ export function Chat({ roomId, playerName }: ChatProps) {
     if (!text) return;
     setInput('');
 
-    await supabase.from('chat_messages').insert({
+    // Optimistic: show message immediately
+    const optimistic: ChatMessage = {
+      id: `optimistic-${Date.now()}`,
+      room_id: roomId,
+      player_name: playerName,
+      message: text,
+      created_at: new Date().toISOString(),
+    };
+    setMessages((prev) => [...prev, optimistic]);
+
+    supabase.from('chat_messages').insert({
       room_id: roomId,
       player_name: playerName,
       message: text,

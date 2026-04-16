@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { supabase } from '../lib/supabase';
 import type { Room, Player, Game } from '../types';
+import type { RealtimeChannel } from '@supabase/supabase-js';
 
 export interface RoomSubscriptionCallbacks {
   onRoomUpdate: (room: Room) => void;
@@ -29,16 +30,16 @@ export function useRoomSubscription(
   cbRef.current = callbacks;
   const playersRef = useRef(players);
   playersRef.current = players;
+  const channelRef = useRef<RealtimeChannel | null>(null);
+  const currentPlayerIdRef = useRef(currentPlayerId);
+  currentPlayerIdRef.current = currentPlayerId;
 
+  // Create channel once per room — does NOT depend on player identity
   useEffect(() => {
     if (!roomId) return;
 
     const channel = supabase
-      .channel(`room-all-${roomId}`, {
-        config: {
-          presence: { key: currentPlayerId ?? '_unregistered' },
-        },
-      })
+      .channel(`room-all-${roomId}`)
       .on(
         'postgres_changes',
         {
@@ -83,26 +84,21 @@ export function useRoomSubscription(
         },
       )
       .on('presence', { event: 'leave' }, ({ leftPresences }) => {
-        // When a client disconnects, clean up their player record.
-        // Only the host (first player in list) handles cleanup to avoid
-        // N clients all calling leave_room simultaneously.
         const currentPlayers = playersRef.current;
         const hostId = currentPlayers.length > 0 ? currentPlayers[0].id : null;
+        const myId = currentPlayerIdRef.current;
 
         for (const presence of leftPresences) {
           const state = presence as unknown as PresenceState;
           const departedId = state.playerId;
           if (!departedId || departedId === '_unregistered') continue;
 
-          // Determine if we should handle this cleanup
           let shouldCleanup = false;
-          if (hostId === currentPlayerId) {
-            // We are the host — handle it
+          if (hostId === myId) {
             shouldCleanup = true;
           } else if (departedId === hostId) {
-            // The host left — the next player in line handles it
             const nextHost = currentPlayers.find((p) => p.id !== departedId);
-            shouldCleanup = nextHost?.id === currentPlayerId;
+            shouldCleanup = nextHost?.id === myId;
           }
 
           if (shouldCleanup) {
@@ -110,19 +106,12 @@ export function useRoomSubscription(
           }
         }
       })
-      .subscribe(async (status) => {
-        if (status === 'SUBSCRIBED' && currentPlayerId && currentPlayerName) {
-          await channel.track({
-            playerId: currentPlayerId,
-            displayName: currentPlayerName,
-          } satisfies PresenceState);
-        }
-      });
+      .subscribe();
 
-    // Explicitly untrack on tab close for instant disconnect detection.
-    // Without this, Supabase detects the WebSocket drop after ~5-10s.
+    channelRef.current = channel;
+
     const handleBeforeUnload = () => {
-      if (currentPlayerId) {
+      if (currentPlayerIdRef.current) {
         channel.untrack();
       }
     };
@@ -130,7 +119,19 @@ export function useRoomSubscription(
 
     return () => {
       window.removeEventListener('beforeunload', handleBeforeUnload);
+      channelRef.current = null;
       supabase.removeChannel(channel);
     };
-  }, [roomId, currentPlayerId, currentPlayerName]);
+  }, [roomId]);
+
+  // Track/update presence separately — no channel teardown on identity change
+  useEffect(() => {
+    const channel = channelRef.current;
+    if (!channel || !currentPlayerId || !currentPlayerName) return;
+
+    channel.track({
+      playerId: currentPlayerId,
+      displayName: currentPlayerName,
+    } satisfies PresenceState);
+  }, [currentPlayerId, currentPlayerName]);
 }

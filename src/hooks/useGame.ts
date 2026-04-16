@@ -78,14 +78,9 @@ export function useGame(roomId: string | undefined, currentGameId: string | null
         return null;
       }
 
-      const { data: newGame } = await supabase
-        .from('games')
-        .select('*')
-        .eq('id', gameId)
-        .single();
-
-      if (newGame) setGame(newGame);
-      return newGame;
+      // No need to fetch the game — the RPC updates rooms.current_game_id,
+      // which triggers CDC → room subscription → currentGameId effect → fetch.
+      return gameId;
     },
     [roomId],
   );
@@ -128,6 +123,13 @@ export function useGame(roomId: string | undefined, currentGameId: string | null
   const voteToReveal = useCallback(
     async (playerId: string, playerCount: number) => {
       if (!game?.id) return;
+      // Optimistic: add vote immediately
+      setGame((prev) => {
+        if (!prev) return prev;
+        const votes = Array.isArray(prev.reveal_votes) ? prev.reveal_votes : [];
+        if (votes.includes(playerId)) return prev;
+        return { ...prev, reveal_votes: [...votes, playerId] };
+      });
       await supabase.rpc('vote_to_reveal', {
         p_game_id: game.id,
         p_player_id: playerId,
@@ -140,6 +142,12 @@ export function useGame(roomId: string | undefined, currentGameId: string | null
   const unvoteToReveal = useCallback(
     async (playerId: string) => {
       if (!game?.id) return;
+      // Optimistic: remove vote immediately
+      setGame((prev) => {
+        if (!prev) return prev;
+        const votes = Array.isArray(prev.reveal_votes) ? prev.reveal_votes : [];
+        return { ...prev, reveal_votes: votes.filter((id) => id !== playerId) };
+      });
       await supabase.rpc('unvote_to_reveal', {
         p_game_id: game.id,
         p_player_id: playerId,

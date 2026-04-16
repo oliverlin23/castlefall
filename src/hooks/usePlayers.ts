@@ -60,17 +60,10 @@ export function usePlayers(roomId: string | undefined) {
         .single();
 
       if (existing) {
-        await supabase.rpc('update_heartbeat', { p_player_id: existing.id });
-        const { data: refreshed } = await supabase
-          .from('players')
-          .select('*')
-          .eq('id', existing.id)
-          .single();
-        if (refreshed) {
-          setCurrentPlayer(refreshed);
-          storePlayer(refreshed.id, trimmed, roomId);
-          return refreshed;
-        }
+        supabase.rpc('update_heartbeat', { p_player_id: existing.id });
+        setCurrentPlayer(existing);
+        storePlayer(existing.id, trimmed, roomId);
+        return existing;
       }
 
       const { data: created, error } = await supabase
@@ -107,18 +100,11 @@ export function usePlayers(roomId: string | undefined) {
         .single();
 
       if (data) {
-        await supabase.rpc('update_heartbeat', { p_player_id: data.id });
-        const { data: refreshed } = await supabase
-          .from('players')
-          .select('*')
-          .eq('id', data.id)
-          .single();
-        if (refreshed) {
-          setCurrentPlayer(refreshed);
-          storePlayer(refreshed.id, refreshed.display_name, roomId);
-        }
+        supabase.rpc('update_heartbeat', { p_player_id: data.id });
+        setCurrentPlayer(data);
+        storePlayer(data.id, data.display_name, roomId);
         setReconnecting(false);
-        return refreshed;
+        return data;
       }
     }
 
@@ -132,18 +118,11 @@ export function usePlayers(roomId: string | undefined) {
         .single();
 
       if (data) {
-        await supabase.rpc('update_heartbeat', { p_player_id: data.id });
-        const { data: refreshed } = await supabase
-          .from('players')
-          .select('*')
-          .eq('id', data.id)
-          .single();
-        if (refreshed) {
-          setCurrentPlayer(refreshed);
-          storePlayer(refreshed.id, refreshed.display_name, roomId);
-        }
+        supabase.rpc('update_heartbeat', { p_player_id: data.id });
+        setCurrentPlayer(data);
+        storePlayer(data.id, data.display_name, roomId);
         setReconnecting(false);
-        return refreshed;
+        return data;
       }
     }
 
