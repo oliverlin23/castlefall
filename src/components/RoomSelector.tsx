@@ -26,32 +26,20 @@ export function RoomSelector({ currentRoom, onChangeRoom }: RoomSelectorProps) {
           type="text"
           value={roomInput}
           onChange={(e) => setRoomInput(e.target.value)}
-          placeholder="Room name..."
+          placeholder="chamber name…"
           autoFocus
-          className="w-24 sm:w-auto rounded-md bg-surface-alt border border-border px-2.5 py-1 text-xs text-text-primary placeholder:text-text-secondary focus:outline-none focus:border-accent"
+          className="w-28 sm:w-40 !py-1 !px-2 !text-[12px]"
         />
-        <button
-          type="submit"
-          className="rounded-md bg-accent px-2.5 py-1 text-xs font-medium text-white hover:bg-accent-hover"
-        >
+        <button type="submit" className="btn-ink !px-3 !py-1 !text-[11px]">
           Go
         </button>
         <button
           type="button"
           onClick={() => setOpen(false)}
-          className="rounded-md px-1.5 py-1 text-text-secondary hover:text-text-primary sm:hidden"
+          className="btn-ghost"
           title="Cancel"
         >
-          <svg xmlns="http://www.w3.org/2000/svg" className="w-3.5 h-3.5" viewBox="0 0 20 20" fill="currentColor">
-            <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
-          </svg>
-        </button>
-        <button
-          type="button"
-          onClick={() => setOpen(false)}
-          className="hidden sm:inline-block rounded-md px-2 py-1 text-xs text-text-secondary hover:text-text-primary"
-        >
-          Cancel
+          ×
         </button>
       </form>
     );
@@ -60,12 +48,12 @@ export function RoomSelector({ currentRoom, onChangeRoom }: RoomSelectorProps) {
   return (
     <button
       onClick={() => setOpen(true)}
-      className="inline-flex items-center gap-1.5 rounded-full bg-surface-alt border border-border px-3 py-1 text-xs text-text-secondary hover:border-accent/50 hover:text-text-primary max-w-[120px] sm:max-w-none"
+      className="inline-flex items-center gap-2 border border-[color:var(--color-ink)] bg-[color:var(--color-paper)] px-2.5 py-1 text-[11px] font-mono uppercase tracking-[0.12em] text-[color:var(--color-ink-mid)] hover:bg-[color:var(--color-paper-dim)] max-w-[160px] sm:max-w-none"
+      title="Switch to another chamber"
     >
-      <span className="font-medium text-text-primary truncate">{currentRoom}</span>
-      <svg xmlns="http://www.w3.org/2000/svg" className="w-3 h-3 shrink-0" viewBox="0 0 20 20" fill="currentColor">
-        <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" />
-      </svg>
+      <span className="text-[color:var(--color-ink-soft)]">#</span>
+      <span className="font-semibold text-[color:var(--color-ink)] truncate normal-case">{currentRoom}</span>
+      <span className="text-[color:var(--color-ink-soft)]">▾</span>
     </button>
   );
 }

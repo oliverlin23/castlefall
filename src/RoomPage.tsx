@@ -13,6 +13,7 @@ import { Chat } from './components/Chat';
 import { TwoRoomsBoard } from './games/two_rooms/Board';
 import { TwoRoomsResults } from './games/two_rooms/Results';
 import { playSound, isSoundEnabled, setSoundEnabled } from './lib/sounds';
+import { CastleIcon, QuillSprite } from './components/sprites';
 import type { CastlefallSettings } from './types';
 
 interface RoomPageProps {
@@ -188,55 +189,59 @@ export function RoomPage({ roomName, onChangeRoom }: RoomPageProps) {
   const soundToggleButton = (
     <button
       onClick={toggleSound}
-      className="rounded-md p-1 text-text-secondary hover:text-text-primary"
+      className="btn-ghost"
       title={soundOn ? 'Mute sounds' : 'Enable sounds'}
     >
       {soundOn ? (
-        <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" viewBox="0 0 20 20" fill="currentColor">
+        <svg xmlns="http://www.w3.org/2000/svg" className="w-3.5 h-3.5" viewBox="0 0 20 20" fill="currentColor">
           <path fillRule="evenodd" d="M9.383 3.076A1 1 0 0110 4v12a1 1 0 01-1.707.707L4.586 13H2a1 1 0 01-1-1V8a1 1 0 011-1h2.586l3.707-3.707a1 1 0 011.09-.217zM14.657 2.929a1 1 0 011.414 0A9.972 9.972 0 0119 10a9.972 9.972 0 01-2.929 7.071 1 1 0 01-1.414-1.414A7.971 7.971 0 0017 10c0-2.21-.894-4.208-2.343-5.657a1 1 0 010-1.414zm-2.829 2.828a1 1 0 011.415 0A5.983 5.983 0 0115 10a5.984 5.984 0 01-1.757 4.243 1 1 0 01-1.415-1.415A3.984 3.984 0 0013 10a3.983 3.983 0 00-1.172-2.828 1 1 0 010-1.415z" clipRule="evenodd" />
         </svg>
       ) : (
-        <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" viewBox="0 0 20 20" fill="currentColor">
+        <svg xmlns="http://www.w3.org/2000/svg" className="w-3.5 h-3.5" viewBox="0 0 20 20" fill="currentColor">
           <path fillRule="evenodd" d="M9.383 3.076A1 1 0 0110 4v12a1 1 0 01-1.707.707L4.586 13H2a1 1 0 01-1-1V8a1 1 0 011-1h2.586l3.707-3.707a1 1 0 011.09-.217zM12.293 7.293a1 1 0 011.414 0L15 8.586l1.293-1.293a1 1 0 111.414 1.414L16.414 10l1.293 1.293a1 1 0 01-1.414 1.414L15 11.414l-1.293 1.293a1 1 0 01-1.414-1.414L13.586 10l-1.293-1.293a1 1 0 010-1.414z" clipRule="evenodd" />
         </svg>
       )}
     </button>
   );
 
+  const wordmark = (
+    <a
+      href="#"
+      className="flex items-center gap-2 text-[color:var(--color-ink)] hover:text-[color:var(--color-seal-red)] transition-colors"
+      title="Castlefall"
+    >
+      <CastleIcon className="h-5 w-5 shrink-0" />
+      <span className="display-heading text-[15px] font-bold tracking-tight">
+        Castlefall
+      </span>
+      <span className="hidden sm:inline font-mono text-[10px] uppercase tracking-[0.24em] text-[color:var(--color-ink-soft)]">
+        // {roomName}
+      </span>
+    </a>
+  );
+
   if (roomLoading) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="text-text-secondary animate-pulse">Joining room...</div>
-      </div>
-    );
+    return <StatusScreen message="Unsealing the room…" />;
   }
 
   if (!room) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="text-text-secondary">Failed to join room. Try refreshing.</div>
-      </div>
-    );
+    return <StatusScreen message="The herald could not find that chamber. Try refreshing." muted />;
   }
 
   if (reconnecting) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="text-text-secondary animate-pulse">Reconnecting...</div>
-      </div>
-    );
+    return <StatusScreen message="Reconnecting the courier…" />;
   }
 
   if (!currentPlayer && joinAttempted) {
     return (
       <div className="min-h-screen flex flex-col">
-        <header className="sticky top-0 z-40 border-b border-border bg-surface px-3 sm:px-4 py-3">
-          <div className="max-w-2xl mx-auto flex items-center justify-between">
-            <h1 className="text-sm font-semibold uppercase tracking-[0.2em] text-text-secondary">Castlefall</h1>
+        <header className="sticky top-0 z-40 border-b border-[color:var(--color-ink)] bg-[color:var(--color-paper)] px-3 sm:px-4 py-3">
+          <div className="max-w-3xl mx-auto flex items-center justify-between gap-2">
+            {wordmark}
             <RoomSelector currentRoom={roomName} onChangeRoom={onChangeRoom} />
           </div>
         </header>
-        <main className="flex-1 max-w-2xl mx-auto w-full px-3 sm:px-4">
+        <main className="flex-1 max-w-3xl mx-auto w-full px-3 sm:px-4">
           <NameEntry defaultName={storedName} onSubmit={registerPlayer} />
         </main>
       </div>
@@ -244,11 +249,7 @@ export function RoomPage({ roomName, onChangeRoom }: RoomPageProps) {
   }
 
   if (!currentPlayer) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="text-text-secondary animate-pulse">Joining room...</div>
-      </div>
-    );
+    return <StatusScreen message="Joining the chamber…" />;
   }
 
   const phase =
@@ -260,15 +261,15 @@ export function RoomPage({ roomName, onChangeRoom }: RoomPageProps) {
 
   return (
     <div className="min-h-screen flex flex-col">
-      <header className="sticky top-0 z-40 border-b border-border bg-surface px-3 sm:px-4 py-3">
-        <div className="max-w-2xl mx-auto flex items-center justify-between flex-wrap gap-2">
-          <h1 className="text-sm font-semibold uppercase tracking-[0.2em] text-text-secondary">Castlefall</h1>
+      <header className="sticky top-0 z-40 border-b border-[color:var(--color-ink)] bg-[color:var(--color-paper)]/95 backdrop-blur-[2px] px-3 sm:px-4 py-3">
+        <div className="max-w-3xl mx-auto flex items-center justify-between flex-wrap gap-2">
+          {wordmark}
           <div className="flex items-center gap-1.5">
             {soundToggleButton}
             <RoomSelector currentRoom={roomName} onChangeRoom={onChangeRoom} />
             <button
               onClick={leaveRoom}
-              className="rounded-md bg-surface-alt border border-border px-2.5 py-1 text-xs text-text-secondary hover:bg-surface-hover hover:text-text-primary"
+              className="btn-ink !px-2.5 !py-1 !text-[11px]"
               title="Leave room and change name"
             >
               {currentPlayer.display_name} &times;
@@ -277,7 +278,7 @@ export function RoomPage({ roomName, onChangeRoom }: RoomPageProps) {
         </div>
       </header>
 
-      <main className="flex-1 max-w-2xl mx-auto w-full px-3 sm:px-4 py-8">
+      <main className="flex-1 max-w-3xl mx-auto w-full px-3 sm:px-4 py-8">
         {phase === 'lobby' && (
           <Lobby
             players={players}
@@ -332,6 +333,20 @@ export function RoomPage({ roomName, onChangeRoom }: RoomPageProps) {
       </main>
 
       <Chat roomId={room.id} playerName={currentPlayer.display_name} />
+    </div>
+  );
+}
+
+function StatusScreen({ message, muted = false }: { message: string; muted?: boolean }) {
+  return (
+    <div className="min-h-screen flex items-center justify-center px-4">
+      <div className="parchment-card px-8 py-7 flex items-center gap-3 animate-fade-in">
+        <QuillSprite className={`h-5 w-5 ${muted ? 'opacity-50' : 'animate-flicker text-[color:var(--color-ink)]'}`} />
+        <span className={`font-mono text-[12px] uppercase tracking-[0.18em] ${muted ? 'text-[color:var(--color-ink-soft)]' : 'text-[color:var(--color-ink-mid)]'}`}>
+          {message}
+          <span className="inline-block w-2 ml-0.5 animate-quill-blink">▌</span>
+        </span>
+      </div>
     </div>
   );
 }

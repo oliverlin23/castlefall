@@ -1,3 +1,5 @@
+import { CrownSprite } from './sprites';
+
 interface WordListProps {
   words: string[];
   assignedWord: string | null;
@@ -11,13 +13,35 @@ export function WordList({ words, assignedWord }: WordListProps) {
         return (
           <div
             key={word}
-            className={`rounded-lg px-3 py-2.5 text-center text-sm font-medium select-none transition-transform duration-150 hover:scale-[1.03] min-w-0 overflow-hidden text-ellipsis ${
+            className={`relative border px-3 py-3 text-center select-none min-w-0 overflow-hidden transition-transform duration-150 hover:-translate-y-[1px] ${
               isAssigned
-                ? 'bg-highlight/15 text-highlight border border-highlight/40 animate-pulse-glow'
-                : 'bg-surface-alt border border-border text-text-primary'
+                ? 'illuminated-tile border-[color:var(--color-banner-gold)] bg-[color:var(--color-banner-gold-soft)]/35 text-[color:var(--color-ink)]'
+                : 'border-[color:var(--color-ink)] bg-[color:var(--color-paper-bright)] text-[color:var(--color-ink)]'
             }`}
           >
-            {word}
+            {isAssigned && (
+              <CrownSprite
+                tone="gold"
+                className="absolute -top-[7px] left-1/2 -translate-x-1/2 h-3 w-auto"
+              />
+            )}
+            <span
+              className={`block truncate text-[14px] ${
+                isAssigned ? 'illuminated text-[17px] leading-tight tracking-tight' : 'font-medium'
+              }`}
+              title={word}
+            >
+              {word}
+            </span>
+            {isAssigned && (
+              <span
+                aria-hidden
+                className="absolute inset-0 pointer-events-none"
+                style={{
+                  boxShadow: 'inset 0 0 0 1px var(--color-banner-gold)',
+                }}
+              />
+            )}
           </div>
         );
       })}

@@ -1,6 +1,7 @@
 import { useState, useCallback } from 'react';
 import { WordList } from './WordList';
 import { VictoryDeclaration } from './VictoryDeclaration';
+import { CrownSprite, ScrollSprite } from './sprites';
 import type { Game, Player } from '../types';
 
 interface GameBoardProps {
@@ -51,39 +52,56 @@ export function GameBoard({
 
   return (
     <div className="space-y-6 animate-fade-in">
-      <div className="rounded-xl bg-surface-alt border border-border p-5 space-y-4">
+      {/* ASSIGNED WORD HERO BANNER */}
+      <section className="parchment-card relative z-[1] px-6 py-5 text-center space-y-2">
+        <div className="flex items-center justify-center gap-2">
+          <CrownSprite tone="gold" className="h-3.5 w-auto" />
+          <span className="section-label">// Your secret word</span>
+          <CrownSprite tone="gold" className="h-3.5 w-auto" />
+        </div>
+        <p
+          className="illuminated text-[34px] sm:text-[42px] leading-none text-[color:var(--color-ink)] tracking-tight"
+          style={{ fontFamily: 'var(--font-illuminated)' }}
+        >
+          {assignedWord ?? '—'}
+        </p>
+        <p className="font-mono text-[10px] uppercase tracking-[0.22em] text-[color:var(--color-ink-soft)]">
+          Find your team. Don't tip off the others.
+        </p>
+      </section>
+
+      {/* WORD LIST GRID */}
+      <section className="ink-card p-5 space-y-4">
         <div className="flex items-center justify-between">
-          <h2 className="text-sm font-semibold">Your Words</h2>
-          <span className="text-xs text-text-secondary">
-            Your word is highlighted
+          <span className="section-label flex items-center gap-2">
+            <ScrollSprite className="h-3.5 w-auto" />
+            // Words on the table
+          </span>
+          <span className="font-mono text-[10px] uppercase tracking-[0.18em] text-[color:var(--color-ink-soft)]">
+            {words.length} total
           </span>
         </div>
         <WordList words={words} assignedWord={assignedWord} />
-      </div>
+      </section>
 
-      <div className="flex items-center gap-2 flex-wrap">
-        <span className="text-xs text-text-secondary">
-          {players.length} players
+      {/* ACTION FOOTER */}
+      <div className="flex items-center gap-3 flex-wrap">
+        <span className="font-mono text-[11px] uppercase tracking-[0.18em] text-[color:var(--color-ink-mid)]">
+          {players.length} {players.length === 1 ? 'player' : 'players'} at the table
         </span>
         <div className="flex-1" />
         {!hasActiveDeclaration && (
           <button
             onClick={() => setShowDeclaration(!showDeclaration)}
-            className={`rounded-lg px-4 py-2 text-xs font-medium ${
-              showDeclaration
-                ? 'bg-surface-hover border border-border text-text-primary'
-                : 'bg-accent text-white hover:bg-accent-hover'
-            }`}
+            className={showDeclaration ? 'btn-ink' : 'btn-seal !py-2 !px-4 !text-[12px]'}
           >
             {showDeclaration ? 'Cancel' : 'Declare Victory'}
           </button>
         )}
         <button
           onClick={hasVoted ? onUnvoteToReveal : onVoteToReveal}
-          className={`rounded-lg border px-4 py-2 text-xs font-medium ${
-            hasVoted
-              ? 'bg-accent/10 border-accent/40 text-accent hover:bg-accent/20'
-              : 'bg-surface-alt border-border text-text-secondary hover:bg-surface-hover hover:text-text-primary'
+          className={`btn-ink !text-[11px] ${
+            hasVoted ? '!text-[color:var(--color-violet)] !border-[color:var(--color-violet)]' : ''
           }`}
         >
           {hasVoted ? 'Retract' : 'Vote Reveal'} ({revealVotes.length}/{voteThreshold})

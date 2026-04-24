@@ -12,20 +12,32 @@ export function Scoreboard({ pastGames }: ScoreboardProps) {
   if (scores.length === 0) return null;
 
   return (
-    <div className="rounded-xl bg-surface-alt border border-border p-4">
-      <div className="flex items-center justify-between text-xs mb-3">
-        <span className="font-semibold text-text-secondary uppercase tracking-wider">Scoreboard</span>
-        <span className="text-text-secondary">{pastGames.length} rounds</span>
+    <div className="ink-card p-4">
+      <div className="flex items-center justify-between mb-3">
+        <span className="section-label">// Tally</span>
+        <span className="font-mono text-[10px] uppercase tracking-[0.18em] text-[color:var(--color-ink-soft)]">
+          {pastGames.length} {pastGames.length === 1 ? 'round' : 'rounds'}
+        </span>
       </div>
-      <div className="space-y-1">
-        {scores.map((s) => (
-          <div key={s.id} className="flex items-center gap-2 rounded-md px-2 py-1 text-xs">
-            <span className="flex-1 font-medium text-text-primary truncate">{s.name}</span>
-            <span className="text-accent font-bold tabular-nums">{s.wins}W</span>
-            <span className="text-text-secondary tabular-nums">{s.losses}L</span>
-            {s.draws > 0 && (
-              <span className="text-text-secondary tabular-nums">{s.draws}D</span>
-            )}
+      <div className="space-y-0.5">
+        {scores.map((s, idx) => (
+          <div
+            key={s.id}
+            className="grid grid-cols-[1.25rem_1fr_auto_auto_auto] items-center gap-2 px-1 py-1 text-[12px] border-b border-dashed border-[color:var(--color-ink)]/15 last:border-b-0"
+          >
+            <span className="font-mono text-[10px] text-[color:var(--color-ink-soft)] tabular-nums">
+              {String(idx + 1).padStart(2, '0')}
+            </span>
+            <span className="font-medium text-[color:var(--color-ink)] truncate">{s.name}</span>
+            <span className="font-mono font-semibold text-[color:var(--color-banner-gold)] tabular-nums text-[11px]">
+              {s.wins}<span className="text-[color:var(--color-ink-soft)] ml-0.5">W</span>
+            </span>
+            <span className="font-mono text-[color:var(--color-ink-mid)] tabular-nums text-[11px]">
+              {s.losses}<span className="text-[color:var(--color-ink-soft)] ml-0.5">L</span>
+            </span>
+            <span className="font-mono text-[color:var(--color-ink-soft)] tabular-nums text-[11px] w-6 text-right">
+              {s.draws > 0 ? `${s.draws}D` : ''}
+            </span>
           </div>
         ))}
       </div>

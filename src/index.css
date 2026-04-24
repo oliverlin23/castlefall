@@ -1,48 +1,347 @@
 @import "tailwindcss";
 
-@theme {
-  --color-team1: #60a5fa;
-  --color-team2: #f87171;
-  --color-surface: #111111;
-  --color-surface-alt: #191919;
-  --color-surface-hover: #242424;
-  --color-border: #2a2a2a;
-  --color-text-primary: #fafafa;
-  --color-text-secondary: #737373;
-  --color-accent: #6366f1;
-  --color-accent-hover: #4f46e5;
-  --color-highlight: #facc15;
+@import "@fontsource/ibm-plex-mono/400.css";
+@import "@fontsource/ibm-plex-mono/600.css";
+@import "@fontsource/space-grotesk/400.css";
+@import "@fontsource/space-grotesk/700.css";
+@import "@fontsource/fraunces/400.css";
+@import "@fontsource/fraunces/700.css";
+@import "@fontsource/press-start-2p/400.css";
 
-  --animate-fade-in: fade-in 0.3s ease-out;
-  --animate-slide-up: slide-up 0.3s ease-out;
-  --animate-pulse-glow: pulse-glow 2s ease-in-out infinite;
+@theme {
+  /* Paper + ink base */
+  --color-paper:        #F1E7CF;  /* warm parchment, slightly aged */
+  --color-paper-dim:    #E5D8B4;  /* deeper crease / page edge */
+  --color-paper-bright: #FAF1D8;  /* highlighted card */
+  --color-ink:          #1A140F;  /* warm near-black */
+  --color-ink-mid:      #5C4A38;  /* sepia mid */
+  --color-ink-soft:     #8B7558;  /* faded ink */
+
+  /* Heraldic team palette */
+  --color-team1:        #1E40AF;  /* royal blue */
+  --color-team1-soft:   #3F66C9;
+  --color-team1-wash:   #DCE5F7;  /* very soft blue tint on paper */
+  --color-team2:        #9F1239;  /* heraldic crimson */
+  --color-team2-soft:   #C13858;
+  --color-team2-wash:   #F4DDDF;
+
+  /* Castle / illumination accents */
+  --color-banner-gold:      #B45309;  /* mustard-amber, illuminated leaf */
+  --color-banner-gold-soft: #E8C56F;
+  --color-seal-red:    #A53D2A;  /* wax seal */
+  --color-violet:      #5B21B6;  /* royal accent */
+  --color-moss:        #3F6212;  /* battle pennant green */
+
+  /* Type tokens */
+  --font-mono:        "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+  --font-display:     "Space Grotesk", ui-sans-serif, system-ui, sans-serif;
+  --font-illuminated: "Fraunces", "Cormorant Garamond", Georgia, serif;
+  --font-pixel:       "Press Start 2P", monospace;
+
+  /* Animations */
+  --animate-fade-in:        fade-in 220ms ease-out;
+  --animate-slide-up:       slide-up 240ms ease-out;
+  --animate-banner-unfurl:  banner-unfurl 380ms cubic-bezier(0.2, 0.8, 0.2, 1);
+  --animate-flicker:        flicker 4s ease-in-out infinite;
+  --animate-quill-blink:    quill-blink 1s steps(2) infinite;
+  --animate-pulse-glow:     pulse-glow 2s ease-in-out infinite;
 }
 
 @keyframes fade-in {
   from { opacity: 0; }
-  to { opacity: 1; }
+  to   { opacity: 1; }
 }
 
 @keyframes slide-up {
-  from { opacity: 0; transform: translateY(8px); }
-  to { opacity: 1; transform: translateY(0); }
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes banner-unfurl {
+  0%   { transform: scaleY(0.05); opacity: 0; }
+  60%  { transform: scaleY(1.04); opacity: 1; }
+  100% { transform: scaleY(1); opacity: 1; }
+}
+
+@keyframes flicker {
+  0%, 100% { opacity: 1; }
+  50%      { opacity: 0.92; }
+}
+
+@keyframes quill-blink {
+  0%, 100% { opacity: 1; }
+  50%      { opacity: 0; }
 }
 
 @keyframes pulse-glow {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.7; }
+  0%, 100% { box-shadow: 0 0 0 0 rgba(180, 83, 9, 0.55); }
+  60%      { box-shadow: 0 0 0 6px rgba(180, 83, 9, 0); }
+  100%     { box-shadow: 0 0 0 0 rgba(180, 83, 9, 0); }
+}
+
+/* -- Base layout -- */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html, body, #root {
+  min-height: 100%;
+  background: var(--color-paper);
+  color: var(--color-ink);
 }
 
 body {
-  @apply bg-surface text-text-primary;
-  font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  font-family: var(--font-mono);
+  font-feature-settings: "tnum";
+  font-size: 14px;
+  line-height: 1.5;
+  /* Paper texture: layered radial speckles for a manuscript / risograph feel.
+     Pure CSS, no images. */
+  background-color: var(--color-paper);
+  background-image:
+    radial-gradient(circle at 20% 30%, rgba(92, 74, 56, 0.05) 0, transparent 1.2px),
+    radial-gradient(circle at 70% 60%, rgba(92, 74, 56, 0.04) 0, transparent 1.5px),
+    radial-gradient(circle at 40% 80%, rgba(165, 61, 42, 0.025) 0, transparent 1.6px),
+    radial-gradient(circle at 90% 15%, rgba(180, 83, 9, 0.03) 0, transparent 1.4px);
+  background-size: 38px 38px, 51px 51px, 67px 67px, 83px 83px;
+  background-attachment: fixed;
 }
 
+/* Faint 8px-multiple grid overlay across the whole page — exposes the design
+   system the way wheels does, but pitched warm so it reads as graph paper. */
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  background-image:
+    linear-gradient(to right, rgba(92, 74, 56, 0.07) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(92, 74, 56, 0.07) 1px, transparent 1px);
+  background-size: 32px 32px;
+  mix-blend-mode: multiply;
+  opacity: 0.5;
+}
+
+#root {
+  position: relative;
+  z-index: 1;
+}
+
+/* Reset scrollbar styling to be paper-ish */
 * {
   scrollbar-width: thin;
-  scrollbar-color: var(--color-border) transparent;
+  scrollbar-color: var(--color-ink-soft) transparent;
 }
 
-button, input, select {
-  transition: background-color 150ms, border-color 150ms, color 150ms, opacity 150ms;
+*::-webkit-scrollbar { width: 8px; height: 8px; }
+*::-webkit-scrollbar-thumb { background: var(--color-ink-soft); }
+*::-webkit-scrollbar-track { background: transparent; }
+
+/* Inputs/selects: no rounded pills, brutalist 1px ink borders on paper */
+button, input, select, textarea {
+  font-family: inherit;
+  transition: background-color 120ms ease, border-color 120ms ease, color 120ms ease, opacity 120ms ease, transform 80ms ease;
+}
+
+input, select, textarea {
+  background: var(--color-paper-bright);
+  color: var(--color-ink);
+  border: 1px solid var(--color-ink);
+  border-radius: 0;
+  padding: 0.55rem 0.75rem;
+  font-size: 13px;
+}
+
+input::placeholder, textarea::placeholder {
+  color: var(--color-ink-soft);
+  font-style: italic;
+}
+
+input:focus, select:focus, textarea:focus {
+  outline: none;
+  border-color: var(--color-violet);
+  box-shadow: inset 0 0 0 1px var(--color-violet);
+}
+
+/* Selection color */
+::selection {
+  background: var(--color-banner-gold-soft);
+  color: var(--color-ink);
+}
+
+/* -- Reusable utilities -- */
+
+/* Pixel-edge crispness for inline SVG sprites */
+.pixel-art {
+  shape-rendering: crispEdges;
+  image-rendering: pixelated;
+}
+
+/* Hero panel: double-rule border (1px outer, 1px inner with 2px gap)
+   for hero panels — replaces drop-shadows. */
+.parchment-card {
+  background: var(--color-paper-bright);
+  border: 1px solid var(--color-ink);
+  position: relative;
+}
+.parchment-card::after {
+  content: "";
+  position: absolute;
+  inset: 3px;
+  border: 1px solid var(--color-ink);
+  pointer-events: none;
+  opacity: 0.32;
+}
+
+/* Standard card: single 1px ink border on a slightly warm paper-bright surface */
+.ink-card {
+  background: var(--color-paper-bright);
+  border: 1px solid var(--color-ink);
+  border-radius: 0;
+}
+
+/* Tiny mono caps section header, e.g.  // PLAYERS */
+.section-label {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--color-ink-mid);
+}
+
+/* Tiny mono "tag" chip with brackets, e.g.  [ ROOM ] */
+.tag-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--color-ink-mid);
+  border: 1px solid var(--color-ink);
+  background: var(--color-paper);
+  padding: 2px 8px;
+  border-radius: 0;
+}
+
+/* Wax-seal style primary button — for hero CTAs (Start Round, Declare, Join) */
+.btn-seal {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  font-family: var(--font-mono);
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--color-paper-bright);
+  background: var(--color-seal-red);
+  border: 1px solid var(--color-ink);
+  border-radius: 0;
+  padding: 12px 24px;
+  cursor: pointer;
+  position: relative;
+  box-shadow: 2px 2px 0 0 var(--color-ink);
+  transform: translate(0, 0);
+}
+.btn-seal:hover:not(:disabled) {
+  background: #B5462F;
+}
+.btn-seal:active:not(:disabled) {
+  transform: translate(2px, 2px);
+  box-shadow: 0 0 0 0 var(--color-ink);
+}
+.btn-seal:disabled {
+  background: var(--color-ink-soft);
+  color: var(--color-paper);
+  cursor: not-allowed;
+  box-shadow: 2px 2px 0 0 var(--color-ink-mid);
+}
+
+/* Ink button — secondary action, single line */
+.btn-ink {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-ink);
+  background: var(--color-paper);
+  border: 1px solid var(--color-ink);
+  border-radius: 0;
+  padding: 7px 14px;
+  cursor: pointer;
+}
+.btn-ink:hover:not(:disabled) {
+  background: var(--color-paper-dim);
+}
+.btn-ink:disabled {
+  color: var(--color-ink-soft);
+  border-color: var(--color-ink-soft);
+  cursor: not-allowed;
+}
+
+/* Ghost button — tertiary, less heavy */
+.btn-ghost {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-ink-mid);
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 0;
+  padding: 4px 8px;
+  cursor: pointer;
+}
+.btn-ghost:hover:not(:disabled) {
+  color: var(--color-ink);
+  border-color: var(--color-ink-soft);
+}
+
+/* Decorative dotted/divider rule with mono tick marks */
+.rule-tick {
+  border-top: 1px dashed var(--color-ink-soft);
+  position: relative;
+}
+.rule-tick::before,
+.rule-tick::after {
+  content: "✦";
+  font-family: var(--font-mono);
+  color: var(--color-ink-soft);
+  background: var(--color-paper);
+  position: absolute;
+  top: -10px;
+  font-size: 10px;
+  padding: 0 6px;
+}
+.rule-tick::before { left: 8px; }
+.rule-tick::after  { right: 8px; }
+
+/* Illuminated word styling — used for the assigned word in the WordList */
+.illuminated {
+  font-family: var(--font-illuminated);
+  font-weight: 700;
+  font-style: italic;
+}
+
+/* Display headings */
+.display-heading {
+  font-family: var(--font-display);
+  font-weight: 700;
+  letter-spacing: -0.01em;
 }

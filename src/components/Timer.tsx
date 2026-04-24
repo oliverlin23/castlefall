@@ -1,5 +1,6 @@
 import { useEffect, useState, useRef } from 'react';
 import { playSound } from '../lib/sounds';
+import { HourglassSprite } from './sprites';
 
 interface TimerProps {
   durationMs: number;
@@ -8,8 +9,8 @@ interface TimerProps {
   label?: string;
 }
 
-const RING_SIZE = 96;
-const STROKE_WIDTH = 4;
+const RING_SIZE = 104;
+const STROKE_WIDTH = 3;
 const RADIUS = (RING_SIZE - STROKE_WIDTH) / 2;
 const CIRCUMFERENCE = 2 * Math.PI * RADIUS;
 
@@ -49,33 +50,46 @@ export function Timer({ durationMs, startedAt, onExpired, label }: TimerProps) {
 
   return (
     <div className="flex flex-col items-center gap-2">
-      {label && <span className="text-xs text-text-secondary max-w-[200px] text-center">{label}</span>}
-      <div className={`relative w-24 h-24 ${urgent ? 'animate-pulse-glow' : ''}`}>
+      {label && (
+        <span className="font-mono text-[11px] uppercase tracking-[0.14em] text-[color:var(--color-ink-mid)] max-w-[240px] text-center">
+          {label}
+        </span>
+      )}
+      <div className={`relative w-[104px] h-[104px] ${urgent ? 'animate-flicker' : ''}`}>
         <svg width={RING_SIZE} height={RING_SIZE} className="-rotate-90">
           <circle
             cx={RING_SIZE / 2}
             cy={RING_SIZE / 2}
             r={RADIUS}
             fill="none"
-            stroke="var(--color-border)"
+            stroke="var(--color-ink-soft)"
+            strokeOpacity="0.4"
             strokeWidth={STROKE_WIDTH}
+            strokeDasharray="2 2"
           />
           <circle
             cx={RING_SIZE / 2}
             cy={RING_SIZE / 2}
             r={RADIUS}
             fill="none"
-            stroke={urgent ? 'var(--color-team2)' : 'var(--color-accent)'}
+            stroke={urgent ? 'var(--color-team2)' : 'var(--color-ink)'}
             strokeWidth={STROKE_WIDTH}
-            strokeLinecap="round"
             strokeDasharray={CIRCUMFERENCE}
             strokeDashoffset={offset}
-            style={{ transition: 'stroke-dashoffset 100ms, stroke 500ms' }}
+            style={{ transition: 'stroke-dashoffset 100ms linear, stroke 400ms' }}
           />
         </svg>
-        <div className="absolute inset-0 flex items-center justify-center">
-          <span className={`text-xl font-mono font-bold ${urgent ? 'text-team2' : 'text-text-primary'}`}>
-            {seconds}s
+        <div className="absolute inset-0 flex flex-col items-center justify-center gap-0.5">
+          <HourglassSprite className="h-5 w-auto" progress={progress} />
+          <span
+            className={`font-mono font-semibold tabular-nums text-[20px] leading-none ${
+              urgent ? 'text-[color:var(--color-team2)]' : 'text-[color:var(--color-ink)]'
+            }`}
+          >
+            {seconds}
+            <span className="text-[10px] font-normal ml-0.5 text-[color:var(--color-ink-soft)]">
+              s
+            </span>
           </span>
         </div>
       </div>
