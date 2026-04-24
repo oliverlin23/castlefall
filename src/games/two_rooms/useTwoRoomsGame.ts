@@ -49,5 +49,17 @@ export function useTwoRoomsGame(gameId: string | null | undefined) {
     return !error && data === true;
   }, [gameId]);
 
-  return { appointLeader, abdicateLeader, selectHostages, advanceRound };
+  const startRoundTimer = useCallback(
+    async (leaderId: string) => {
+      if (!gameId) return false;
+      const { data, error } = await supabase.rpc('start_round_timer', {
+        p_game_id: gameId,
+        p_leader_id: leaderId,
+      });
+      return !error && data === true;
+    },
+    [gameId],
+  );
+
+  return { appointLeader, abdicateLeader, selectHostages, advanceRound, startRoundTimer };
 }

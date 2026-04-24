@@ -229,30 +229,79 @@ export function Lobby({
         </button>
       </>)}
 
-      <div className="rounded-xl bg-surface-alt border border-border overflow-hidden">
-        <button
-          onClick={() => setRulesOpen(!rulesOpen)}
-          className="w-full flex items-center justify-between px-5 py-3 text-xs font-semibold text-text-secondary uppercase tracking-wider hover:text-text-primary"
-        >
-          How to play
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            className={`w-3.5 h-3.5 transition-transform duration-200 ${rulesOpen ? 'rotate-180' : ''}`}
-            viewBox="0 0 20 20"
-            fill="currentColor"
+      {gameType === 'castlefall' && (
+        <div className="rounded-xl bg-surface-alt border border-border overflow-hidden">
+          <button
+            onClick={() => setRulesOpen(!rulesOpen)}
+            className="w-full flex items-center justify-between px-5 py-3 text-xs font-semibold text-text-secondary uppercase tracking-wider hover:text-text-primary"
           >
-            <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" />
-          </svg>
-        </button>
-        {rulesOpen && (
-          <ul className="px-5 pb-4 text-sm text-text-secondary space-y-2 list-disc list-inside animate-fade-in">
-            <li>Everyone receives the same list of words, but shuffled differently.</li>
-            <li>You'll be secretly assigned to one of two teams. Your teammates share the same highlighted word.</li>
-            <li>Give clues about your word to find teammates -- but don't make it too obvious, or the other team will figure it out!</li>
-            <li>Win by either naming your teammates or guessing the other team's word.</li>
-          </ul>
-        )}
-      </div>
+            How to play
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              className={`w-3.5 h-3.5 transition-transform duration-200 ${rulesOpen ? 'rotate-180' : ''}`}
+              viewBox="0 0 20 20"
+              fill="currentColor"
+            >
+              <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" />
+            </svg>
+          </button>
+          {rulesOpen && (
+            <ul className="px-5 pb-4 text-sm text-text-secondary space-y-2 list-disc list-inside animate-fade-in">
+              <li>Everyone receives the same list of words, but shuffled differently.</li>
+              <li>You'll be secretly assigned to one of two teams. Your teammates share the same highlighted word.</li>
+              <li>Give clues about your word to find teammates -- but don't make it too obvious, or the other team will figure it out!</li>
+              <li>Win by either naming your teammates or guessing the other team's word.</li>
+            </ul>
+          )}
+        </div>
+      )}
+
+      {gameType === 'two_rooms' && (
+        <div className="rounded-xl bg-surface-alt border border-border overflow-hidden">
+          <button
+            onClick={() => setTwoRoomsRulesOpen(!twoRoomsRulesOpen)}
+            className="w-full flex items-center justify-between px-5 py-3 text-xs font-semibold text-text-secondary uppercase tracking-wider hover:text-text-primary"
+          >
+            How to play
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              className={`w-3.5 h-3.5 transition-transform duration-200 ${twoRoomsRulesOpen ? 'rotate-180' : ''}`}
+              viewBox="0 0 20 20"
+              fill="currentColor"
+            >
+              <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" />
+            </svg>
+          </button>
+          {twoRoomsRulesOpen && (
+            <div className="px-5 pb-4 text-sm text-text-secondary space-y-3 animate-fade-in">
+              <p>
+                You'll be in one of two <strong>physically separate rooms</strong>. The app replaces the cards and
+                the timer — everything else (talking, showing cards, bluffing) happens in person.
+              </p>
+              <ul className="list-disc list-inside space-y-1.5">
+                <li>
+                  <strong>Goal:</strong> Red wins if the Bomber ends the final round in the same room as the
+                  President. Blue wins otherwise.
+                </li>
+                <li>
+                  Show your card by turning your phone toward another player. The app never reveals it to anyone else.
+                </li>
+                <li>
+                  Each room appoints a Leader (tap another player to appoint; the Leader can abdicate).
+                </li>
+                <li>
+                  Round durations: 3 min, 2 min, 1 min. Hostages per round: 1 · 1 · 1 (≤10 players), 2 · 1 · 1 (≤21),
+                  3 · 2 · 1 (≤30).
+                </li>
+                <li>
+                  Between rounds: the Leader announces hostages out loud, Leaders meet in the hallway, hostages walk
+                  to the other room, then a Leader starts the next round's timer.
+                </li>
+              </ul>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }
