@@ -16,6 +16,8 @@ interface TwoRoomsState {
   room_a_leader: string | null;
   room_b_leader: string | null;
   selected_hostages: { a: string[]; b: string[] };
+  usurp_votes?: { a: Record<string, string[]>; b: Record<string, string[]> };
+  prior_leaders?: { a: string[]; b: string[] };
   phase: string;
 }
 
@@ -65,7 +67,7 @@ export function TwoRoomsBoard({ game, players, currentPlayer }: BoardProps) {
   const role = currentPlayer.role as { room?: 'a' | 'b'; character?: string; team?: string } | null;
   const myRoom = role?.room;
 
-  const { appointLeader, abdicateLeader, selectHostages, advanceRound, startRoundTimer } = useTwoRoomsGame(game.id);
+  const { appointLeader, abdicateLeader, selectHostages, advanceRound, startRoundTimer, usurpLeader } = useTwoRoomsGame(game.id);
 
   const sameRoomPlayers = useMemo(
     () =>
@@ -78,6 +80,14 @@ export function TwoRoomsBoard({ game, players, currentPlayer }: BoardProps) {
 
   const leaderId = myRoom === 'a' ? state.room_a_leader : state.room_b_leader;
   const iAmLeader = leaderId === currentPlayer.id;
+  const roomUsurpVotes: Record<string, string[]> =
+    (myRoom === 'a' ? state.usurp_votes?.a : state.usurp_votes?.b) ?? {};
+  const priorLeaders: string[] =
+    (myRoom === 'a' ? state.prior_leaders?.a : state.prior_leaders?.b) ?? [];
+  const myUsurpTarget: string | null = Object.entries(roomUsurpVotes).find(
+    ([, voters]) => voters.includes(currentPlayer.id),
+  )?.[0] ?? null;
+  const usurpThreshold = Math.floor(sameRoomPlayers.length / 2) + 1;
   const bothLeadersSet = !!state.room_a_leader && !!state.room_b_leader;
   const hostagesExpected = state.hostages_per_round[state.round - 1] ?? 1;
   const mySelected = (myRoom === 'a' ? state.selected_hostages.a : state.selected_hostages.b) ?? [];
@@ -136,6 +146,12 @@ export function TwoRoomsBoard({ game, players, currentPlayer }: BoardProps) {
 
   async function handleAbdicate(targetId: string) {
     await abdicateLeader(currentPlayer.id, targetId);
+  }
+
+  async function handleUsurpVote(targetId: string) {
+    // Toggle: clicking an already-selected target cancels the voter's vote.
+    const cancel = myUsurpTarget === targetId;
+    await usurpLeader(currentPlayer.id, cancel ? currentPlayer.id : targetId);
   }
 
   async function handleAdvance() {
@@ -237,16 +253,23 @@ export function TwoRoomsBoard({ game, players, currentPlayer }: BoardProps) {
         </div>
         {!leaderId && (
           <p className="text-xs text-text-secondary">
-            No leader yet. Tap a player to appoint them (you cannot appoint yourself).
+            No leader yet. Use the <span className="text-text-primary font-medium">Appoint as leader</span> button next to a player (you cannot appoint yourself).
           </p>
         )}
         {leaderId && (
-          <p className="text-xs text-text-secondary">
-            Leader: <span className="text-text-primary font-medium">
-              {players.find((p) => p.id === leaderId)?.display_name ?? '?'}
-            </span>
-            {iAmLeader && ' (you)'}
-          </p>
+          <>
+            <p className="text-xs text-text-secondary">
+              Leader: <span className="text-text-primary font-medium">
+                {players.find((p) => p.id === leaderId)?.display_name ?? '?'}
+              </span>
+              {iAmLeader && ' (you)'}
+            </p>
+            {!iAmLeader && (
+              <p className="text-[11px] text-text-secondary">
+                To replace the leader, {usurpThreshold} of {sameRoomPlayers.length} players in this room must vote for the same replacement. A player who has already led this round can't lead again.
+              </p>
+            )}
+          </>
         )}
         <ul className="space-y-1">
           {sameRoomPlayers.map((p) => {
@@ -254,6 +277,10 @@ export function TwoRoomsBoard({ game, players, currentPlayer }: BoardProps) {
             const isLeader = p.id === leaderId;
             const selected = pendingHostages.has(p.id);
             const canPick = iAmLeader && timerStarted && !timeUp;
+            const hasLed = priorLeaders.includes(p.id);
+            const voteCount = roomUsurpVotes[p.id]?.length ?? 0;
+            const iVotedForThem = myUsurpTarget === p.id;
+            const canVoteReplace = !!leaderId && !iAmLeader && !isSelf && !isLeader && !hasLed;
             return (
               <li
                 key={p.id}
@@ -270,9 +297,17 @@ export function TwoRoomsBoard({ game, players, currentPlayer }: BoardProps) {
                   <span className="text-text-primary font-medium">{p.display_name}</span>
                   {isSelf && <span className="text-text-secondary ml-1">(you)</span>}
                   {isLeader && <span className="ml-2 text-[10px] text-accent uppercase tracking-wide">Leader</span>}
+                  {!isLeader && hasLed && (
+                    <span className="ml-2 text-[10px] text-text-secondary uppercase tracking-wide">Already led</span>
+                  )}
+                  {!isLeader && voteCount > 0 && (
+                    <span className="ml-2 text-[11px] text-text-secondary">
+                      {voteCount} of {sameRoomPlayers.length} votes to make leader
+                    </span>
+                  )}
                 </span>
                 <div className="flex items-center gap-2">
-                  {!leaderId && !isSelf && (
+                  {!leaderId && !isSelf && !hasLed && (
                     <button
                       onClick={(e) => {
                         e.stopPropagation();
@@ -280,19 +315,49 @@ export function TwoRoomsBoard({ game, players, currentPlayer }: BoardProps) {
                       }}
                       className="rounded-md bg-accent/20 border border-accent px-2 py-0.5 text-[11px] text-accent hover:bg-accent/30"
                     >
-                      Appoint
+                      Appoint {p.display_name} as leader
                     </button>
                   )}
-                  {iAmLeader && !isSelf && (
+                  {!leaderId && !isSelf && hasLed && (
+                    <span
+                      className="rounded-md bg-surface-alt border border-border px-2 py-0.5 text-[11px] text-text-secondary"
+                      title="This player already led this round and can't lead again until next round."
+                    >
+                      Already led this round
+                    </span>
+                  )}
+                  {iAmLeader && !isSelf && !hasLed && (
                     <button
                       onClick={(e) => {
                         e.stopPropagation();
                         handleAbdicate(p.id);
                       }}
                       className="rounded-md bg-surface-alt border border-border px-2 py-0.5 text-[11px] text-text-secondary hover:text-text-primary"
-                      title="Hand leadership to this player"
+                      title="Hand the leader card to this player. You can't take it back this round."
                     >
-                      Abdicate →
+                      Hand leader to {p.display_name}
+                    </button>
+                  )}
+                  {canVoteReplace && (
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleUsurpVote(p.id);
+                      }}
+                      className={`rounded-md px-2 py-0.5 text-[11px] border ${
+                        iVotedForThem
+                          ? 'bg-accent/20 border-accent text-accent hover:bg-accent/30'
+                          : 'bg-surface-alt border-border text-text-secondary hover:text-text-primary'
+                      }`}
+                      title={
+                        iVotedForThem
+                          ? `Click to undo your vote. ${voteCount} of ${usurpThreshold} needed.`
+                          : `${voteCount} of ${usurpThreshold} votes needed to make ${p.display_name} leader.`
+                      }
+                    >
+                      {iVotedForThem
+                        ? `Voting to make ${p.display_name} leader — click to undo`
+                        : `Vote to make ${p.display_name} leader`}
                     </button>
                   )}
                 </div>
@@ -304,15 +369,25 @@ export function TwoRoomsBoard({ game, players, currentPlayer }: BoardProps) {
         {iAmLeader && timerStarted && (
           <div className="pt-3 border-t border-border space-y-2">
             <div className="text-xs text-text-secondary">
-              Select {hostagesExpected} {hostagesExpected === 1 ? 'hostage' : 'hostages'} to send to the other room.
-              Currently selected: {pendingHostages.size}/{hostagesExpected}
+              Pick {hostagesExpected} {hostagesExpected === 1 ? 'player' : 'players'} to send to the other room at round end.
+              Currently picked: {pendingHostages.size}/{hostagesExpected}
             </div>
             <button
               onClick={submitHostages}
               disabled={pendingHostages.size !== hostagesExpected}
               className="w-full rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-white hover:bg-accent-hover disabled:opacity-40 disabled:cursor-not-allowed"
             >
-              {mySelected.length > 0 ? 'Update hostage selection' : 'Lock in hostages'}
+              {(() => {
+                const names = Array.from(pendingHostages)
+                  .map((id) => players.find((pl) => pl.id === id)?.display_name ?? '?')
+                  .join(', ');
+                if (pendingHostages.size !== hostagesExpected) {
+                  return `Pick ${hostagesExpected} to send to the other room`;
+                }
+                return mySelected.length > 0
+                  ? `Update pick: send ${names} to the other room`
+                  : `Send ${names} to the other room`;
+              })()}
             </button>
           </div>
         )}
