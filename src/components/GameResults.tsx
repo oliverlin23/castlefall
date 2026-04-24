@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import type { Game, Player, GameSettings } from '../types';
+import type { Game, Player, CastlefallSettings } from '../types';
 import type { WordListMeta } from '../hooks/useWordLists';
 import { PlayerList } from './PlayerList';
 import { Scoreboard } from './Scoreboard';
@@ -10,9 +10,9 @@ interface GameResultsProps {
   currentPlayerId?: string;
   wordLists: WordListMeta[];
   lastWordListId: string;
-  lastSettings: GameSettings;
+  lastSettings: CastlefallSettings;
   pastGames: Game[];
-  onNewRound: (wordListId: string, settings: GameSettings) => void;
+  onNewRound: (wordListId: string, settings: CastlefallSettings) => void;
 }
 
 function outcomeMessage(game: Game, players: Player[]): string | null {

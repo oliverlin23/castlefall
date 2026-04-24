@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import type { Player, Game, GameSettings } from '../types';
+import type { Player, Game, CastlefallSettings, GameType } from '../types';
 import type { WordListMeta } from '../hooks/useWordLists';
 import { PlayerList } from './PlayerList';
 import { Scoreboard } from './Scoreboard';
@@ -10,8 +10,11 @@ interface LobbyProps {
   wordLists: WordListMeta[];
   wordListsLoading: boolean;
   pastGames: Game[];
-  lastSettings: GameSettings;
-  onStartGame: (wordListId: string, settings: GameSettings) => void;
+  lastSettings: CastlefallSettings;
+  gameType: GameType;
+  onChangeGameType?: (gameType: GameType) => void;
+  onStartGame: (wordListId: string, settings: CastlefallSettings) => void;
+  onStartTwoRoomsGame?: () => void;
   onKickPlayer?: (playerId: string) => void;
 }
 
@@ -29,11 +32,15 @@ export function Lobby({
   wordListsLoading,
   pastGames,
   lastSettings,
+  gameType,
+  onChangeGameType,
   onStartGame,
+  onStartTwoRoomsGame,
   onKickPlayer,
 }: LobbyProps) {
   const [selectedList, setSelectedList] = useState(wordLists[0]?.id ?? '');
   const [rulesOpen, setRulesOpen] = useState(false);
+  const [twoRoomsRulesOpen, setTwoRoomsRulesOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [wordCount, setWordCount] = useState<12 | 18 | 24>(lastSettings.wordCount);
   const [timerMs, setTimerMs] = useState<30000 | 60000 | 90000>(lastSettings.timerDurationMs);
@@ -43,7 +50,9 @@ export function Lobby({
     setSelectedList(wordLists[0].id);
   }
 
-  const canStart = players.length >= 4 && !!selectedList && !wordListsLoading;
+  const castlefallCanStart = players.length >= 4 && !!selectedList && !wordListsLoading;
+  const twoRoomsCanStart = players.length >= 6 && players.length <= 30;
+  const canStart = gameType === 'castlefall' ? castlefallCanStart : twoRoomsCanStart;
   const isHost = !!currentPlayerId && players.length > 0 && players[0].id === currentPlayerId;
 
   function handleCopyLink() {
@@ -56,6 +65,34 @@ export function Lobby({
   return (
     <div className="space-y-6 animate-fade-in">
       <Scoreboard pastGames={pastGames} />
+
+      <div className="rounded-xl bg-surface-alt border border-border p-5 space-y-3">
+        <h2 className="text-sm font-semibold">Game</h2>
+        <div className="flex rounded-lg bg-surface border border-border p-0.5">
+          {([
+            { id: 'castlefall', label: 'Castlefall' },
+            { id: 'two_rooms', label: 'Two Rooms & a Boom' },
+          ] as const).map((opt) => {
+            const selected = gameType === opt.id;
+            return (
+              <button
+                key={opt.id}
+                type="button"
+                disabled={!isHost || !onChangeGameType}
+                onClick={() => onChangeGameType?.(opt.id)}
+                className={`flex-1 rounded-md px-3 py-1.5 text-xs font-medium transition-colors ${
+                  selected ? 'bg-surface-hover text-text-primary' : 'text-text-secondary hover:text-text-primary'
+                } ${!isHost ? 'cursor-not-allowed opacity-70' : ''}`}
+              >
+                {opt.label}
+              </button>
+            );
+          })}
+        </div>
+        {!isHost && (
+          <p className="text-[11px] text-text-secondary">Only the host can change the game.</p>
+        )}
+      </div>
 
       <div className="rounded-xl bg-surface-alt border border-border p-5 space-y-4">
         <div className="flex items-center justify-between">
@@ -87,6 +124,7 @@ export function Lobby({
         )}
       </div>
 
+      {gameType === 'castlefall' && (<>
       <div className="rounded-xl bg-surface-alt border border-border p-5 space-y-3">
         <label htmlFor="word-list-select" className="block text-sm font-semibold">
           Word list
@@ -171,6 +209,25 @@ export function Lobby({
       >
         {canStart ? 'Start Round' : `Waiting for players (${players.length}/4)...`}
       </button>
+      </>)}
+
+      {gameType === 'two_rooms' && (<>
+        <div className="rounded-xl bg-surface-alt border border-border p-5 space-y-2">
+          <h3 className="text-sm font-semibold">Two Rooms and a Boom</h3>
+          <p className="text-xs text-text-secondary">
+            A hidden-role party game for 6–30 players. Everyone is secretly assigned a character.
+            Players split into two rooms; each round, leaders select hostages to swap. Red wins if the
+            Bomber ends in the same room as the President; Blue wins otherwise.
+          </p>
+        </div>
+        <button
+          onClick={() => onStartTwoRoomsGame?.()}
+          disabled={!twoRoomsCanStart || !isHost}
+          className="w-full rounded-xl bg-accent px-6 py-3 text-sm font-semibold text-white hover:bg-accent-hover disabled:opacity-40 disabled:cursor-not-allowed"
+        >
+          {twoRoomsCanStart ? 'Start Game' : players.length < 6 ? `Waiting for players (${players.length}/6)...` : 'Too many players (max 30)'}
+        </button>
+      </>)}
 
       <div className="rounded-xl bg-surface-alt border border-border overflow-hidden">
         <button

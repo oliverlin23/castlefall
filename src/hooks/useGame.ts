@@ -1,8 +1,8 @@
 import { useEffect, useState, useCallback } from 'react';
 import { supabase } from '../lib/supabase';
-import type { Game, GameSettings } from '../types';
+import type { Game, CastlefallSettings } from '../types';
 
-const DEFAULT_SETTINGS: GameSettings = { wordCount: 18, timerDurationMs: 60000 };
+const DEFAULT_SETTINGS: CastlefallSettings = { wordCount: 18, timerDurationMs: 60000 };
 
 export function useGame(roomId: string | undefined, currentGameId: string | null | undefined) {
   const [game, setGame] = useState<Game | null>(null);
@@ -63,7 +63,7 @@ export function useGame(roomId: string | undefined, currentGameId: string | null
   );
 
   const startGame = useCallback(
-    async (wordList: string[], wordListName: string, settings: GameSettings = DEFAULT_SETTINGS) => {
+    async (wordList: string[], wordListName: string, settings: CastlefallSettings = DEFAULT_SETTINGS) => {
       if (!roomId) return null;
 
       const { data: gameId, error } = await supabase.rpc('start_game_atomic', {
@@ -156,5 +156,17 @@ export function useGame(roomId: string | undefined, currentGameId: string | null
     [game?.id],
   );
 
-  return { game, pastGames, loading, startGame, revealGame, declareTeam, declareWord, voteToReveal, unvoteToReveal, handleGameUpdate };
+  const startTwoRoomsGame = useCallback(async () => {
+    if (!roomId) return null;
+    const { data: gameId, error } = await supabase.rpc('start_two_rooms_game', {
+      p_room_id: roomId,
+    });
+    if (error || !gameId) {
+      console.error('Failed to start two_rooms game:', error);
+      return null;
+    }
+    return gameId as string;
+  }, [roomId]);
+
+  return { game, pastGames, loading, startGame, startTwoRoomsGame, revealGame, declareTeam, declareWord, voteToReveal, unvoteToReveal, handleGameUpdate };
 }

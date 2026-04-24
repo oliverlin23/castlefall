@@ -10,8 +10,10 @@ import { Lobby } from './components/Lobby';
 import { GameBoard } from './components/GameBoard';
 import { GameResults } from './components/GameResults';
 import { Chat } from './components/Chat';
+import { TwoRoomsBoard } from './games/two_rooms/Board';
+import { TwoRoomsResults } from './games/two_rooms/Results';
 import { playSound, isSoundEnabled, setSoundEnabled } from './lib/sounds';
-import type { GameSettings } from './types';
+import type { CastlefallSettings } from './types';
 
 interface RoomPageProps {
   roomName: string;
@@ -19,7 +21,7 @@ interface RoomPageProps {
 }
 
 export function RoomPage({ roomName, onChangeRoom }: RoomPageProps) {
-  const { room, loading: roomLoading, deactivateRoom, handleRoomUpdate } = useRoom(roomName);
+  const { room, loading: roomLoading, deactivateRoom, handleRoomUpdate, setGameType } = useRoom(roomName);
   const {
     players,
     currentPlayer,
@@ -36,6 +38,7 @@ export function RoomPage({ roomName, onChangeRoom }: RoomPageProps) {
     game,
     pastGames,
     startGame,
+    startTwoRoomsGame,
     revealGame,
     declareTeam,
     declareWord,
@@ -54,7 +57,7 @@ export function RoomPage({ roomName, onChangeRoom }: RoomPageProps) {
   const { lists: wordLists, loading: wordListsLoading, loadWordList } = useWordLists();
   const [joinAttempted, setJoinAttempted] = useState(false);
   const [lastWordListId, setLastWordListId] = useState('general');
-  const [lastSettings, setLastSettings] = useState<GameSettings>({ wordCount: 18, timerDurationMs: 60000 });
+  const [lastSettings, setLastSettings] = useState<CastlefallSettings>({ wordCount: 18, timerDurationMs: 60000 });
   const [soundOn, setSoundOn] = useState(isSoundEnabled);
   const prevPhaseRef = useRef<string | null>(null);
   const prevPlayerCountRef = useRef(0);
@@ -117,7 +120,7 @@ export function RoomPage({ roomName, onChangeRoom }: RoomPageProps) {
   }, [game?.status]);
 
   const handleStartGame = useCallback(
-    async (wordListId: string, settings: GameSettings) => {
+    async (wordListId: string, settings: CastlefallSettings) => {
       if (!players.length) return;
       const words = await loadWordList(wordListId);
       setLastWordListId(wordListId);
@@ -128,7 +131,7 @@ export function RoomPage({ roomName, onChangeRoom }: RoomPageProps) {
   );
 
   const handleNewRound = useCallback(
-    async (wordListId: string, settings: GameSettings) => {
+    async (wordListId: string, settings: CastlefallSettings) => {
       if (!players.length) return;
       const words = await loadWordList(wordListId);
       setLastWordListId(wordListId);
@@ -170,6 +173,11 @@ export function RoomPage({ roomName, onChangeRoom }: RoomPageProps) {
     if (!currentPlayer) return;
     unvoteToReveal(currentPlayer.id);
   }, [currentPlayer, unvoteToReveal]);
+
+  const handleStartTwoRoomsGame = useCallback(async () => {
+    if (!players.length) return;
+    await startTwoRoomsGame();
+  }, [players.length, startTwoRoomsGame]);
 
   function toggleSound() {
     const next = !soundOn;
@@ -278,12 +286,15 @@ export function RoomPage({ roomName, onChangeRoom }: RoomPageProps) {
             wordListsLoading={wordListsLoading}
             pastGames={pastGames}
             lastSettings={lastSettings}
+            gameType={room.game_type}
+            onChangeGameType={setGameType}
             onStartGame={handleStartGame}
+            onStartTwoRoomsGame={handleStartTwoRoomsGame}
             onKickPlayer={kickPlayer}
           />
         )}
 
-        {phase === 'playing' && game && (
+        {phase === 'playing' && game && game.game_type === 'castlefall' && (
           <GameBoard
             game={game}
             words={currentPlayer.word_order ?? game.game_words}
@@ -298,7 +309,11 @@ export function RoomPage({ roomName, onChangeRoom }: RoomPageProps) {
           />
         )}
 
-        {phase === 'revealed' && game && (
+        {phase === 'playing' && game && game.game_type === 'two_rooms' && (
+          <TwoRoomsBoard game={game} players={players} currentPlayer={currentPlayer} />
+        )}
+
+        {phase === 'revealed' && game && game.game_type === 'castlefall' && (
           <GameResults
             game={game}
             players={players}
@@ -309,6 +324,10 @@ export function RoomPage({ roomName, onChangeRoom }: RoomPageProps) {
             pastGames={pastGames}
             onNewRound={handleNewRound}
           />
+        )}
+
+        {phase === 'revealed' && game && game.game_type === 'two_rooms' && (
+          <TwoRoomsResults game={game} players={players} />
         )}
       </main>
 

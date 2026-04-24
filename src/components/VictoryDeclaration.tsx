@@ -28,7 +28,8 @@ export function VictoryDeclaration({
   const [showWordGuess, setShowWordGuess] = useState(false);
 
   const n = useMemo(() => suggestedN(players.length), [players.length]);
-  const timerDurationMs = game.settings?.timerDurationMs ?? 60_000;
+  const timerDurationMs =
+    (game.settings && 'timerDurationMs' in game.settings ? game.settings.timerDurationMs : undefined) ?? 60_000;
 
   function togglePlayer(playerId: string) {
     setSelectedPlayers((prev) => {

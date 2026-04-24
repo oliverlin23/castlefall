@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback } from 'react';
 import { supabase } from '../lib/supabase';
-import type { Room } from '../types';
+import type { Room, GameType } from '../types';
 
 export function useRoom(roomName: string) {
   const [room, setRoom] = useState<Room | null>(null);
@@ -46,5 +46,16 @@ export function useRoom(roomName: string) {
     await supabase.rpc('deactivate_room', { p_room_id: room.id });
   }, [room?.id]);
 
-  return { room, loading, joinRoom, deactivateRoom, handleRoomUpdate };
+  /** Change the game type for this room. Syncs to all clients via CDC. */
+  const setGameType = useCallback(async (gameType: GameType) => {
+    if (!room?.id) return;
+    // Optimistic
+    setRoom((prev) => (prev ? { ...prev, game_type: gameType } : prev));
+    await supabase.rpc('set_room_game_type', {
+      p_room_id: room.id,
+      p_game_type: gameType,
+    });
+  }, [room?.id]);
+
+  return { room, loading, joinRoom, deactivateRoom, handleRoomUpdate, setGameType };
 }
