@@ -2,6 +2,7 @@ import { useState, useMemo, type FormEvent } from 'react';
 import { Timer } from './Timer';
 import { suggestedN } from '../lib/gameLogic';
 import { playSound } from '../lib/sounds';
+import { WaxSealSprite } from './sprites';
 import type { Game, Player } from '../types';
 
 interface VictoryDeclarationProps {
@@ -60,6 +61,7 @@ export function VictoryDeclaration({
     }
   }
 
+  // ---------- Active team-declaration timer view ----------
   if (game.declaration_type === 'team' && game.declaration_at) {
     const declarerName = game.declaration_player_name ?? 'Someone';
     const iDeclared = game.declaration_player_id === currentPlayer.id;
@@ -67,25 +69,30 @@ export function VictoryDeclaration({
     const declarationTimestamp = new Date(game.declaration_at).getTime();
 
     return (
-      <div className="rounded-xl bg-surface-alt border border-border p-6 space-y-5 animate-slide-up">
-        <h3 className="text-sm font-semibold text-center">
-          {iDeclared ? 'Your' : `${declarerName}'s`} Team Declaration
-        </h3>
-        <p className="text-xs text-text-secondary text-center">
-          {declarerName} claims these players are on their team:
-        </p>
+      <section className="parchment-card relative z-[1] p-6 space-y-5 animate-slide-up">
+        <div className="text-center space-y-1">
+          <span className="section-label">// {iDeclared ? 'Your' : `${declarerName}'s`} declaration</span>
+          <h3 className="display-heading text-[20px] text-[color:var(--color-ink)]">
+            Naming a team
+          </h3>
+          <p className="text-[12px] text-[color:var(--color-ink-mid)]">
+            {declarerName} claims these players are on their team.
+          </p>
+        </div>
+
         <div className="flex flex-wrap gap-1.5 justify-center">
           {players
             .filter((p) => selectedIds.includes(p.id))
             .map((p) => (
               <span
                 key={p.id}
-                className="rounded-full bg-accent/15 text-accent px-3 py-1 text-xs font-medium"
+                className="border border-[color:var(--color-banner-gold)] bg-[color:var(--color-banner-gold-soft)]/40 text-[color:var(--color-ink)] px-2.5 py-1 text-[12px] font-medium font-mono uppercase tracking-[0.08em]"
               >
                 {p.display_name}
               </span>
             ))}
         </div>
+
         <Timer
           durationMs={timerDurationMs}
           startedAt={declarationTimestamp}
@@ -93,17 +100,17 @@ export function VictoryDeclaration({
           label="Time to counter with a word guess"
         />
 
-        <div className="border-t border-border pt-4 space-y-3">
-          <p className="text-xs text-text-secondary text-center">
+        <div className="border-t border-dashed border-[color:var(--color-ink-soft)] pt-4 space-y-3">
+          <p className="text-[12px] text-[color:var(--color-ink-mid)] text-center">
             Counter with a word guess to override the declaration:
           </p>
           <form onSubmit={handleDeclareWord} className="flex flex-col sm:flex-row gap-2 justify-center">
             <select
               value={wordGuess}
               onChange={(e) => setWordGuess(e.target.value)}
-              className="rounded-lg bg-surface border border-border px-3 py-2 text-sm text-text-primary focus:outline-none focus:border-team2"
+              className="flex-1 sm:flex-initial sm:w-56"
             >
-              <option value="">Select a word...</option>
+              <option value="">Select a word…</option>
               {game.game_words
                 .filter((w) => w !== currentPlayer.assigned_word)
                 .map((w) => (
@@ -112,29 +119,36 @@ export function VictoryDeclaration({
                   </option>
                 ))}
             </select>
-            <button
-              type="submit"
-              disabled={!wordGuess}
-              className="rounded-lg bg-team2 px-4 py-2 text-sm font-medium text-white hover:bg-team2/80 disabled:opacity-40"
-            >
+            <button type="submit" disabled={!wordGuess} className="btn-seal !py-2.5 !px-4 !text-[12px]">
               Guess Word
             </button>
           </form>
         </div>
-      </div>
+      </section>
     );
   }
 
+  // ---------- Active declaration form ----------
   return (
-    <div className="rounded-xl bg-surface-alt border border-border p-6 space-y-5 animate-slide-up">
-      <h3 className="text-sm font-semibold text-center">Declare Victory</h3>
+    <section className="parchment-card relative z-[1] p-6 space-y-5 animate-slide-up">
+      <div className="flex items-center gap-3 justify-center">
+        <WaxSealSprite tone="seal" className="h-8 w-8" />
+        <div className="text-center">
+          <span className="section-label block">// Declare victory</span>
+          <h3 className="display-heading text-[18px] text-[color:var(--color-ink)] leading-none">
+            Stake your claim
+          </h3>
+        </div>
+      </div>
 
-      <div className="flex rounded-lg bg-surface border border-border p-0.5">
+      <div className="grid grid-cols-2 border border-[color:var(--color-ink)]">
         <button
           type="button"
           onClick={() => setShowWordGuess(false)}
-          className={`flex-1 rounded-md px-3 py-1.5 text-xs font-medium transition-colors ${
-            !showWordGuess ? 'bg-surface-hover text-text-primary' : 'text-text-secondary hover:text-text-primary'
+          className={`px-3 py-2 text-[12px] font-mono uppercase tracking-[0.12em] border-r border-[color:var(--color-ink)] ${
+            !showWordGuess
+              ? 'bg-[color:var(--color-ink)] text-[color:var(--color-paper-bright)]'
+              : 'bg-[color:var(--color-paper-bright)] text-[color:var(--color-ink)] hover:bg-[color:var(--color-paper-dim)]'
           }`}
         >
           Name teammates
@@ -142,8 +156,10 @@ export function VictoryDeclaration({
         <button
           type="button"
           onClick={() => setShowWordGuess(true)}
-          className={`flex-1 rounded-md px-3 py-1.5 text-xs font-medium transition-colors ${
-            showWordGuess ? 'bg-surface-hover text-text-primary' : 'text-text-secondary hover:text-text-primary'
+          className={`px-3 py-2 text-[12px] font-mono uppercase tracking-[0.12em] ${
+            showWordGuess
+              ? 'bg-[color:var(--color-ink)] text-[color:var(--color-paper-bright)]'
+              : 'bg-[color:var(--color-paper-bright)] text-[color:var(--color-ink)] hover:bg-[color:var(--color-paper-dim)]'
           }`}
         >
           Guess word
@@ -152,8 +168,9 @@ export function VictoryDeclaration({
 
       {!showWordGuess ? (
         <form onSubmit={handleDeclareTeam} className="space-y-3 animate-fade-in">
-          <p className="text-xs text-text-secondary">
-            Select <strong>{n}</strong> players (including yourself) that you believe are on your team.
+          <p className="text-[12px] text-[color:var(--color-ink-mid)]">
+            Select <strong className="text-[color:var(--color-ink)]">{n}</strong> players (including yourself)
+            you believe are on your team.
           </p>
           <div className="flex flex-wrap gap-1.5">
             {players.map((p) => {
@@ -165,14 +182,14 @@ export function VictoryDeclaration({
                   type="button"
                   onClick={() => togglePlayer(p.id)}
                   disabled={isSelf}
-                  className={`rounded-full px-3 py-1.5 text-xs font-medium transition-colors ${
+                  className={`px-3 py-1.5 text-[12px] font-mono uppercase tracking-[0.06em] border ${
                     isSelected
-                      ? 'bg-accent/15 text-accent border border-accent/40'
-                      : 'bg-surface border border-border text-text-primary hover:border-border hover:bg-surface-hover'
+                      ? 'border-[color:var(--color-banner-gold)] bg-[color:var(--color-banner-gold-soft)]/35 text-[color:var(--color-ink)]'
+                      : 'border-[color:var(--color-ink)] bg-[color:var(--color-paper-bright)] text-[color:var(--color-ink)] hover:bg-[color:var(--color-paper-dim)]'
                   } ${isSelf ? 'cursor-default' : 'cursor-pointer'}`}
                 >
                   {p.display_name}
-                  {isSelf && <span className="ml-1 text-text-secondary">you</span>}
+                  {isSelf && <span className="ml-1 text-[color:var(--color-ink-soft)] normal-case">you</span>}
                 </button>
               );
             })}
@@ -180,22 +197,22 @@ export function VictoryDeclaration({
           <button
             type="submit"
             disabled={selectedPlayers.size < n}
-            className="w-full rounded-lg bg-accent px-4 py-2.5 text-sm font-medium text-white hover:bg-accent-hover disabled:opacity-40 disabled:cursor-not-allowed"
+            className="btn-seal w-full !py-2.5 !text-[12px]"
           >
             Declare Team ({selectedPlayers.size}/{n})
           </button>
         </form>
       ) : (
         <form onSubmit={handleDeclareWord} className="space-y-3 animate-fade-in">
-          <p className="text-xs text-text-secondary">
+          <p className="text-[12px] text-[color:var(--color-ink-mid)]">
             Guess the other team's word. The round ends immediately.
           </p>
           <select
             value={wordGuess}
             onChange={(e) => setWordGuess(e.target.value)}
-            className="w-full rounded-lg bg-surface border border-border px-3 py-2 text-sm text-text-primary focus:outline-none focus:border-team2"
+            className="w-full"
           >
-            <option value="">Select a word...</option>
+            <option value="">Select a word…</option>
             {game.game_words
               .filter((w) => w !== currentPlayer.assigned_word)
               .map((w) => (
@@ -207,12 +224,12 @@ export function VictoryDeclaration({
           <button
             type="submit"
             disabled={!wordGuess}
-            className="w-full rounded-lg bg-team2 px-4 py-2.5 text-sm font-medium text-white hover:bg-team2/80 disabled:opacity-40 disabled:cursor-not-allowed"
+            className="btn-seal w-full !py-2.5 !text-[12px]"
           >
             Guess Word
           </button>
         </form>
       )}
-    </div>
+    </section>
   );
 }

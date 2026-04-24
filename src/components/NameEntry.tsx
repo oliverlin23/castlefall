@@ -1,4 +1,5 @@
 import { useState, type FormEvent } from 'react';
+import { QuillSprite } from './sprites';
 
 interface NameEntryProps {
   defaultName: string;
@@ -15,28 +16,31 @@ export function NameEntry({ defaultName, onSubmit }: NameEntryProps) {
   }
 
   return (
-    <div className="flex items-center justify-center min-h-[60vh] animate-fade-in">
-      <div className="w-full max-w-sm rounded-xl bg-surface-alt border border-border p-8 space-y-6">
-        <div className="space-y-1">
-          <h2 className="text-lg font-semibold">Join game</h2>
-          <p className="text-sm text-text-secondary">Enter a display name to get started.</p>
+    <div className="flex items-center justify-center min-h-[60vh] animate-fade-in py-8">
+      <div className="w-full max-w-sm parchment-card p-7 space-y-5 relative z-[1]">
+        <div className="flex items-center gap-3">
+          <QuillSprite className="h-6 w-6 text-[color:var(--color-ink)]" />
+          <div className="space-y-0.5">
+            <h2 className="display-heading text-[20px] leading-tight text-[color:var(--color-ink)]">
+              Sign your name
+            </h2>
+            <p className="text-[12px] text-[color:var(--color-ink-mid)]">
+              The herald needs to know who has joined the chamber.
+            </p>
+          </div>
         </div>
         <form onSubmit={handleSubmit} className="space-y-4">
           <input
             type="text"
             value={name}
             onChange={(e) => setName(e.target.value)}
-            placeholder="Your name..."
+            placeholder="Your given name…"
             autoFocus
             maxLength={24}
-            className="w-full rounded-lg bg-surface border border-border px-4 py-2.5 text-sm text-text-primary placeholder:text-text-secondary focus:outline-none focus:border-accent"
+            className="w-full text-[15px]"
           />
-          <button
-            type="submit"
-            disabled={!name.trim()}
-            className="w-full rounded-lg bg-accent px-4 py-2.5 text-sm font-medium text-white hover:bg-accent-hover disabled:opacity-40 disabled:cursor-not-allowed"
-          >
-            Join
+          <button type="submit" disabled={!name.trim()} className="btn-seal w-full">
+            Sign &amp; Enter
           </button>
         </form>
       </div>

@@ -3,6 +3,7 @@ import type { Player, Game, CastlefallSettings, GameType } from '../types';
 import type { WordListMeta } from '../hooks/useWordLists';
 import { PlayerList } from './PlayerList';
 import { Scoreboard } from './Scoreboard';
+import { CastleSprite, ScrollSprite, TowerSprite } from './sprites';
 
 interface LobbyProps {
   players: Player[];
@@ -66,13 +67,23 @@ export function Lobby({
     <div className="space-y-6 animate-fade-in">
       <Scoreboard pastGames={pastGames} />
 
-      <div className="rounded-xl bg-surface-alt border border-border p-5 space-y-3">
-        <h2 className="text-sm font-semibold">Game</h2>
-        <div className="flex rounded-lg bg-surface border border-border p-0.5">
-          {([
-            { id: 'castlefall', label: 'Castlefall' },
-            { id: 'two_rooms', label: 'Two Rooms & a Boom' },
-          ] as const).map((opt) => {
+      {/* GAME MODE PICKER */}
+      <section className="ink-card p-5 space-y-3">
+        <div className="flex items-center justify-between">
+          <span className="section-label">// Game</span>
+          {!isHost && (
+            <span className="font-mono text-[10px] text-[color:var(--color-ink-soft)] uppercase tracking-[0.18em]">
+              host only
+            </span>
+          )}
+        </div>
+        <div className="grid grid-cols-2 gap-0 border border-[color:var(--color-ink)]">
+          {(
+            [
+              { id: 'castlefall', label: 'Castlefall', sub: 'words & treason' },
+              { id: 'two_rooms', label: 'Two Rooms', sub: '& a Boom' },
+            ] as const
+          ).map((opt, i) => {
             const selected = gameType === opt.id;
             return (
               <button
@@ -80,228 +91,240 @@ export function Lobby({
                 type="button"
                 disabled={!isHost || !onChangeGameType}
                 onClick={() => onChangeGameType?.(opt.id)}
-                className={`flex-1 rounded-md px-3 py-1.5 text-xs font-medium transition-colors ${
-                  selected ? 'bg-surface-hover text-text-primary' : 'text-text-secondary hover:text-text-primary'
+                className={`px-4 py-3 text-left ${i === 0 ? 'border-r border-[color:var(--color-ink)]' : ''} ${
+                  selected
+                    ? 'bg-[color:var(--color-ink)] text-[color:var(--color-paper-bright)]'
+                    : 'bg-[color:var(--color-paper-bright)] text-[color:var(--color-ink)] hover:bg-[color:var(--color-paper-dim)]'
                 } ${!isHost ? 'cursor-not-allowed opacity-70' : ''}`}
               >
-                {opt.label}
+                <div className="font-display font-bold text-[15px] leading-tight" style={{ fontFamily: 'var(--font-display)' }}>
+                  {opt.label}
+                </div>
+                <div className={`font-mono text-[10px] uppercase tracking-[0.18em] ${selected ? 'text-[color:var(--color-paper-dim)]' : 'text-[color:var(--color-ink-soft)]'}`}>
+                  {opt.sub}
+                </div>
               </button>
             );
           })}
         </div>
-        {!isHost && (
-          <p className="text-[11px] text-text-secondary">Only the host can change the game.</p>
-        )}
-      </div>
+      </section>
 
-      <div className="rounded-xl bg-surface-alt border border-border p-5 space-y-4">
-        <div className="flex items-center justify-between">
-          <h2 className="text-sm font-semibold text-text-primary">
-            Players
-            <span className="ml-1.5 text-text-secondary font-normal">{players.length}</span>
-          </h2>
+      {/* PLAYERS */}
+      <section className="ink-card p-5 space-y-3">
+        <div className="flex items-center justify-between gap-2 flex-wrap">
+          <div className="flex items-baseline gap-2">
+            <span className="section-label">// Court</span>
+            <span className="font-mono text-[12px] text-[color:var(--color-ink)] tabular-nums font-semibold">
+              {String(players.length).padStart(2, '0')}
+            </span>
+          </div>
           <div className="flex items-center gap-2">
-            <button
-              onClick={handleCopyLink}
-              className="rounded-md bg-surface border border-border px-2.5 py-1 text-[11px] text-text-secondary hover:text-text-primary hover:border-accent/50"
-            >
-              {copied ? 'Copied!' : 'Copy link'}
+            <button onClick={handleCopyLink} className="btn-ghost border border-[color:var(--color-ink-soft)]">
+              {copied ? '✓ Copied' : 'Copy invite'}
             </button>
-            {players.length < 4 && (
-              <span className="text-xs text-text-secondary">
-                Need {4 - players.length} more
+            {gameType === 'castlefall' && players.length < 4 && (
+              <span className="font-mono text-[10px] uppercase tracking-[0.18em] text-[color:var(--color-ink-soft)]">
+                +{4 - players.length} needed
               </span>
             )}
           </div>
         </div>
 
         {players.length === 0 ? (
-          <p className="text-sm text-text-secondary py-4 text-center">
-            No one has joined yet. Share the link to invite players.
-          </p>
+          <div className="flex items-center gap-4 border border-dashed border-[color:var(--color-ink-soft)] px-5 py-6">
+            <TowerSprite className="h-12 w-auto text-[color:var(--color-ink-soft)]" />
+            <p className="text-[12px] text-[color:var(--color-ink-mid)] leading-relaxed">
+              The chamber is empty. Share the invite link to summon players.
+            </p>
+          </div>
         ) : (
           <PlayerList players={players} currentPlayerId={currentPlayerId} isHost={isHost} onKick={onKickPlayer} />
         )}
-      </div>
+      </section>
 
-      {gameType === 'castlefall' && (<>
-      <div className="rounded-xl bg-surface-alt border border-border p-5 space-y-3">
-        <label htmlFor="word-list-select" className="block text-sm font-semibold">
-          Word list
-        </label>
-        {wordListsLoading ? (
-          <div className="h-9 rounded-lg bg-surface-hover animate-pulse" />
-        ) : (
-          <select
-            id="word-list-select"
-            value={selectedList}
-            onChange={(e) => setSelectedList(e.target.value)}
-            className="w-full rounded-lg bg-surface border border-border px-3 py-2 text-sm text-text-primary focus:outline-none focus:border-accent"
-          >
-            {wordLists.map((wl) => (
-              <option key={wl.id} value={wl.id}>
-                {wl.name}
-              </option>
-            ))}
-          </select>
-        )}
-      </div>
-
-      <div className="rounded-xl bg-surface-alt border border-border overflow-hidden">
-        <button
-          onClick={() => setSettingsOpen(!settingsOpen)}
-          className="w-full flex items-center justify-between px-5 py-3 text-xs font-semibold text-text-secondary uppercase tracking-wider hover:text-text-primary"
-        >
-          Settings
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            className={`w-3.5 h-3.5 transition-transform duration-200 ${settingsOpen ? 'rotate-180' : ''}`}
-            viewBox="0 0 20 20"
-            fill="currentColor"
-          >
-            <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" />
-          </svg>
-        </button>
-        {settingsOpen && (
-          <div className="px-5 pb-4 space-y-4 animate-fade-in">
-            <div className="space-y-2">
-              <label className="block text-xs text-text-secondary">Word count</label>
-              <div className="flex rounded-lg bg-surface border border-border p-0.5">
-                {WORD_COUNTS.map((wc) => (
-                  <button
-                    key={wc}
-                    type="button"
-                    onClick={() => setWordCount(wc)}
-                    className={`flex-1 rounded-md px-3 py-1.5 text-xs font-medium transition-colors ${
-                      wordCount === wc ? 'bg-surface-hover text-text-primary' : 'text-text-secondary hover:text-text-primary'
-                    }`}
-                  >
-                    {wc}
-                  </button>
-                ))}
-              </div>
-            </div>
-            <div className="space-y-2">
-              <label className="block text-xs text-text-secondary">Declaration timer</label>
-              <div className="flex rounded-lg bg-surface border border-border p-0.5">
-                {TIMER_OPTIONS.map((opt) => (
-                  <button
-                    key={opt.value}
-                    type="button"
-                    onClick={() => setTimerMs(opt.value as 30000 | 60000 | 90000)}
-                    className={`flex-1 rounded-md px-3 py-1.5 text-xs font-medium transition-colors ${
-                      timerMs === opt.value ? 'bg-surface-hover text-text-primary' : 'text-text-secondary hover:text-text-primary'
-                    }`}
-                  >
-                    {opt.label}
-                  </button>
-                ))}
-              </div>
-            </div>
-          </div>
-        )}
-      </div>
-
-      <button
-        onClick={() => onStartGame(selectedList, { wordCount, timerDurationMs: timerMs })}
-        disabled={!canStart}
-        className="w-full rounded-xl bg-accent px-6 py-3 text-sm font-semibold text-white hover:bg-accent-hover disabled:opacity-40 disabled:cursor-not-allowed"
-      >
-        {canStart ? 'Start Round' : `Waiting for players (${players.length}/4)...`}
-      </button>
-      </>)}
-
-      {gameType === 'two_rooms' && (<>
-        <div className="rounded-xl bg-surface-alt border border-border p-5 space-y-2">
-          <h3 className="text-sm font-semibold">Two Rooms and a Boom</h3>
-          <p className="text-xs text-text-secondary">
-            A hidden-role party game for 6–30 players. Everyone is secretly assigned a character.
-            Players split into two rooms; each round, leaders select hostages to swap. Red wins if the
-            Bomber ends in the same room as the President; Blue wins otherwise.
-          </p>
-        </div>
-        <button
-          onClick={() => onStartTwoRoomsGame?.()}
-          disabled={!twoRoomsCanStart || !isHost}
-          className="w-full rounded-xl bg-accent px-6 py-3 text-sm font-semibold text-white hover:bg-accent-hover disabled:opacity-40 disabled:cursor-not-allowed"
-        >
-          {twoRoomsCanStart ? 'Start Game' : players.length < 6 ? `Waiting for players (${players.length}/6)...` : 'Too many players (max 30)'}
-        </button>
-      </>)}
-
+      {/* CASTLEFALL CONFIG */}
       {gameType === 'castlefall' && (
-        <div className="rounded-xl bg-surface-alt border border-border overflow-hidden">
+        <>
+          <section className="ink-card p-5 space-y-3">
+            <label htmlFor="word-list-select" className="section-label block">
+              // Word list
+            </label>
+            {wordListsLoading ? (
+              <div className="h-9 bg-[color:var(--color-paper-dim)] animate-pulse" />
+            ) : (
+              <select
+                id="word-list-select"
+                value={selectedList}
+                onChange={(e) => setSelectedList(e.target.value)}
+                className="w-full"
+              >
+                {wordLists.map((wl) => (
+                  <option key={wl.id} value={wl.id}>
+                    {wl.name}
+                  </option>
+                ))}
+              </select>
+            )}
+          </section>
+
+          <section className="ink-card overflow-hidden">
+            <button
+              onClick={() => setSettingsOpen(!settingsOpen)}
+              className="w-full flex items-center justify-between px-5 py-3 section-label hover:text-[color:var(--color-ink)]"
+            >
+              <span>// Settings</span>
+              <span className="text-[14px]">{settingsOpen ? '−' : '+'}</span>
+            </button>
+            {settingsOpen && (
+              <div className="px-5 pb-5 space-y-4 animate-fade-in">
+                <SettingGroup label="Word count">
+                  {WORD_COUNTS.map((wc) => (
+                    <SegButton key={wc} active={wordCount === wc} onClick={() => setWordCount(wc)}>
+                      {wc}
+                    </SegButton>
+                  ))}
+                </SettingGroup>
+                <SettingGroup label="Declaration timer">
+                  {TIMER_OPTIONS.map((opt) => (
+                    <SegButton
+                      key={opt.value}
+                      active={timerMs === opt.value}
+                      onClick={() => setTimerMs(opt.value as 30000 | 60000 | 90000)}
+                    >
+                      {opt.label}
+                    </SegButton>
+                  ))}
+                </SettingGroup>
+              </div>
+            )}
+          </section>
+
+          <button
+            onClick={() => onStartGame(selectedList, { wordCount, timerDurationMs: timerMs })}
+            disabled={!canStart}
+            className="btn-seal w-full !py-4 !text-[14px]"
+          >
+            <CastleSprite className="h-5 w-auto text-[color:var(--color-paper-bright)]" />
+            {canStart ? 'Begin the round' : `Awaiting ${4 - players.length} more (${players.length}/4)`}
+          </button>
+        </>
+      )}
+
+      {/* TWO ROOMS CONFIG */}
+      {gameType === 'two_rooms' && (
+        <>
+          <section className="parchment-card p-5 space-y-2 relative z-[1]">
+            <h3 className="display-heading text-[18px] text-[color:var(--color-ink)]">Two Rooms &amp; a Boom</h3>
+            <p className="text-[12px] text-[color:var(--color-ink-mid)] leading-relaxed">
+              A hidden-role parlour game for 6–30 players. Everyone is secretly given a character.
+              Players split into two rooms; each round, leaders trade hostages. The Crimson team wins
+              if the Bomber ends the final round in the same room as the President. Else the Blue team
+              prevails.
+            </p>
+          </section>
+          <button
+            onClick={() => onStartTwoRoomsGame?.()}
+            disabled={!twoRoomsCanStart || !isHost}
+            className="btn-seal w-full !py-4 !text-[14px]"
+          >
+            {twoRoomsCanStart
+              ? 'Sound the horn'
+              : players.length < 6
+                ? `Awaiting ${6 - players.length} more (${players.length}/6)`
+                : 'Too many players (max 30)'}
+          </button>
+        </>
+      )}
+
+      {/* RULES */}
+      {gameType === 'castlefall' && (
+        <section className="ink-card overflow-hidden">
           <button
             onClick={() => setRulesOpen(!rulesOpen)}
-            className="w-full flex items-center justify-between px-5 py-3 text-xs font-semibold text-text-secondary uppercase tracking-wider hover:text-text-primary"
+            className="w-full flex items-center justify-between px-5 py-3 section-label hover:text-[color:var(--color-ink)]"
           >
-            How to play
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              className={`w-3.5 h-3.5 transition-transform duration-200 ${rulesOpen ? 'rotate-180' : ''}`}
-              viewBox="0 0 20 20"
-              fill="currentColor"
-            >
-              <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" />
-            </svg>
+            <span className="flex items-center gap-2">
+              <ScrollSprite className="h-3.5 w-auto" />
+              // How to play
+            </span>
+            <span className="text-[14px]">{rulesOpen ? '−' : '+'}</span>
           </button>
           {rulesOpen && (
-            <ul className="px-5 pb-4 text-sm text-text-secondary space-y-2 list-disc list-inside animate-fade-in">
-              <li>Everyone receives the same list of words, but shuffled differently.</li>
-              <li>You'll be secretly assigned to one of two teams. Your teammates share the same highlighted word.</li>
-              <li>Give clues about your word to find teammates -- but don't make it too obvious, or the other team will figure it out!</li>
-              <li>Win by either naming your teammates or guessing the other team's word.</li>
-            </ul>
+            <ol className="px-5 pb-4 space-y-2 text-[13px] text-[color:var(--color-ink-mid)] list-decimal list-inside marker:font-mono marker:text-[color:var(--color-ink-soft)] animate-fade-in">
+              <li>All players receive the same word list, shuffled differently.</li>
+              <li>You'll be secretly assigned to one of two teams. Your teammates share the same illuminated word.</li>
+              <li>Give clues about your word to find teammates — but don't tip off the other team.</li>
+              <li>Win by either naming your full team or guessing the other team's word.</li>
+            </ol>
           )}
-        </div>
+        </section>
       )}
 
       {gameType === 'two_rooms' && (
-        <div className="rounded-xl bg-surface-alt border border-border overflow-hidden">
+        <section className="ink-card overflow-hidden">
           <button
             onClick={() => setTwoRoomsRulesOpen(!twoRoomsRulesOpen)}
-            className="w-full flex items-center justify-between px-5 py-3 text-xs font-semibold text-text-secondary uppercase tracking-wider hover:text-text-primary"
+            className="w-full flex items-center justify-between px-5 py-3 section-label hover:text-[color:var(--color-ink)]"
           >
-            How to play
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              className={`w-3.5 h-3.5 transition-transform duration-200 ${twoRoomsRulesOpen ? 'rotate-180' : ''}`}
-              viewBox="0 0 20 20"
-              fill="currentColor"
-            >
-              <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" />
-            </svg>
+            <span className="flex items-center gap-2">
+              <ScrollSprite className="h-3.5 w-auto" />
+              // How to play
+            </span>
+            <span className="text-[14px]">{twoRoomsRulesOpen ? '−' : '+'}</span>
           </button>
           {twoRoomsRulesOpen && (
-            <div className="px-5 pb-4 text-sm text-text-secondary space-y-3 animate-fade-in">
+            <div className="px-5 pb-4 text-[13px] text-[color:var(--color-ink-mid)] space-y-3 animate-fade-in">
               <p>
-                You'll be in one of two <strong>physically separate rooms</strong>. The app replaces the cards and
-                the timer — everything else (talking, showing cards, bluffing) happens in person.
+                You'll be in one of two <strong className="text-[color:var(--color-ink)]">physically separate</strong> rooms.
+                The app replaces the cards and the timer — everything else (talking, showing cards, bluffing)
+                happens in person.
               </p>
-              <ul className="list-disc list-inside space-y-1.5">
-                <li>
-                  <strong>Goal:</strong> Red wins if the Bomber ends the final round in the same room as the
-                  President. Blue wins otherwise.
-                </li>
-                <li>
-                  Show your card by turning your phone toward another player. The app never reveals it to anyone else.
-                </li>
-                <li>
-                  Each room appoints a Leader (tap another player to appoint; the Leader can abdicate).
-                </li>
-                <li>
-                  Round durations: 3 min, 2 min, 1 min. Hostages per round: 1 · 1 · 1 (≤10 players), 2 · 1 · 1 (≤21),
-                  3 · 2 · 1 (≤30).
-                </li>
-                <li>
-                  Between rounds: the Leader announces hostages out loud, Leaders meet in the hallway, hostages walk
-                  to the other room, then a Leader starts the next round's timer.
-                </li>
+              <ul className="list-disc list-inside space-y-1.5 marker:text-[color:var(--color-ink-soft)]">
+                <li><strong className="text-[color:var(--color-ink)]">Goal:</strong> Crimson wins if the Bomber ends the final round in the same room as the President. Blue wins otherwise.</li>
+                <li>Show your card by turning your phone toward another player. The app never reveals it to anyone else.</li>
+                <li>Each room appoints a Leader (tap another player to appoint; the Leader can abdicate).</li>
+                <li>Round durations: 3 min, 2 min, 1 min. Hostages per round: 1·1·1 (≤10), 2·1·1 (≤21), 3·2·1 (≤30).</li>
+                <li>Between rounds: the Leader announces hostages, Leaders meet in the hallway, hostages walk to the other room, then a Leader starts the next round's timer.</li>
               </ul>
             </div>
           )}
-        </div>
+        </section>
       )}
     </div>
+  );
+}
+
+function SettingGroup({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div className="space-y-2">
+      <label className="font-mono text-[10px] uppercase tracking-[0.18em] text-[color:var(--color-ink-soft)] block">
+        {label}
+      </label>
+      <div className="flex border border-[color:var(--color-ink)]">{children}</div>
+    </div>
+  );
+}
+
+function SegButton({
+  active,
+  onClick,
+  children,
+}: {
+  active: boolean;
+  onClick: () => void;
+  children: React.ReactNode;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`flex-1 px-3 py-2 text-[12px] font-mono uppercase tracking-[0.12em] border-r border-[color:var(--color-ink)] last:border-r-0 ${
+        active
+          ? 'bg-[color:var(--color-ink)] text-[color:var(--color-paper-bright)]'
+          : 'bg-[color:var(--color-paper-bright)] text-[color:var(--color-ink)] hover:bg-[color:var(--color-paper-dim)]'
+      }`}
+    >
+      {children}
+    </button>
   );
 }
