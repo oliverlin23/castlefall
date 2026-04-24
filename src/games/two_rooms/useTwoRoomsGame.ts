@@ -61,5 +61,18 @@ export function useTwoRoomsGame(gameId: string | null | undefined) {
     [gameId],
   );
 
-  return { appointLeader, abdicateLeader, selectHostages, advanceRound, startRoundTimer };
+  const usurpLeader = useCallback(
+    async (voterId: string, targetId: string) => {
+      if (!gameId) return false;
+      const { data, error } = await supabase.rpc('usurp_leader', {
+        p_game_id: gameId,
+        p_voter_id: voterId,
+        p_target_id: targetId,
+      });
+      return !error && data === true;
+    },
+    [gameId],
+  );
+
+  return { appointLeader, abdicateLeader, selectHostages, advanceRound, startRoundTimer, usurpLeader };
 }
