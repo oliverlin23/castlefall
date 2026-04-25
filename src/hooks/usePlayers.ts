@@ -52,34 +52,21 @@ export function usePlayers(roomId: string | undefined) {
       const trimmed = displayName.trim();
       if (!trimmed) return null;
 
-      const { data: existing } = await supabase
-        .from('players')
-        .select('*')
-        .eq('room_id', roomId)
-        .eq('display_name', trimmed)
-        .single();
+      const { data, error } = await supabase.rpc('register_player', {
+        p_room_id: roomId,
+        p_display_name: trimmed,
+      });
 
-      if (existing) {
-        supabase.rpc('update_heartbeat', { p_player_id: existing.id });
-        setCurrentPlayer(existing);
-        storePlayer(existing.id, trimmed, roomId);
-        return existing;
-      }
+      const player = (Array.isArray(data) ? data[0] : data) as Player | null;
 
-      const { data: created, error } = await supabase
-        .from('players')
-        .insert({ room_id: roomId, display_name: trimmed })
-        .select()
-        .single();
-
-      if (error) {
+      if (error || !player) {
         console.error('Failed to register player:', error);
         return null;
       }
 
-      setCurrentPlayer(created);
-      storePlayer(created.id, trimmed, roomId);
-      return created;
+      setCurrentPlayer(player);
+      storePlayer(player.id, trimmed, roomId);
+      return player;
     },
     [roomId],
   );
