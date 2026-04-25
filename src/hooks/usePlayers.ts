@@ -28,7 +28,7 @@ function clearStoredPlayer() {
   localStorage.removeItem(PLAYER_STORAGE_KEY);
 }
 
-export function usePlayers(roomId: string | undefined) {
+export function usePlayers(roomId: string | undefined, currentGameId?: string | null) {
   const [players, setPlayers] = useState<Player[]>([]);
   const [currentPlayer, setCurrentPlayer] = useState<Player | null>(null);
   const [reconnecting, setReconnecting] = useState(false);
@@ -41,7 +41,16 @@ export function usePlayers(roomId: string | undefined) {
       .select('*')
       .eq('room_id', roomId)
       .order('joined_at', { ascending: true });
-    if (data) setPlayers(data);
+    if (data) {
+      setPlayers(data);
+      // Resync currentPlayer from authoritative DB state in case a
+      // realtime UPDATE for this player was dropped (e.g. start_game_atomic
+      // assigned the team / word but the per-row CDC never arrived).
+      setCurrentPlayer((cur) => {
+        if (!cur) return cur;
+        return data.find((p) => p.id === cur.id) ?? cur;
+      });
+    }
     setPlayersLoaded(true);
   }, [roomId]);
 
@@ -145,11 +154,14 @@ export function usePlayers(roomId: string | undefined) {
     });
   }, [currentPlayer]);
 
-  // Fetch players on mount
+  // Fetch players on mount, and resync whenever a new game starts so we
+  // pick up team / assigned_word even if individual row CDC events were
+  // dropped between start_game_atomic's per-player updates and the final
+  // rooms.current_game_id update.
   useEffect(() => {
     if (!roomId) return;
     fetchPlayers();
-  }, [roomId, fetchPlayers]);
+  }, [roomId, currentGameId, fetchPlayers]);
 
   /** Handle player events from the unified subscription. */
   const handlePlayerEvent = useCallback(

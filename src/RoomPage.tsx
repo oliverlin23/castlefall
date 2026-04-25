@@ -34,7 +34,7 @@ export function RoomPage({ roomName, onChangeRoom }: RoomPageProps) {
     handlePlayerEvent,
     storedName,
     playersLoaded,
-  } = usePlayers(room?.id);
+  } = usePlayers(room?.id, room?.current_game_id);
   const {
     game,
     pastGames,
