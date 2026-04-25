@@ -102,7 +102,7 @@ export function useRoomSubscription(
           }
 
           if (shouldCleanup) {
-            supabase.rpc('leave_room', { p_player_id: departedId }).then();
+            supabase.rpc('release_disconnected_player', { p_player_id: departedId }).then();
           }
         }
       })
