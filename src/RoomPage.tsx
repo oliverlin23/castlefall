@@ -45,6 +45,7 @@ export function RoomPage({ roomName, onChangeRoom }: RoomPageProps) {
     declareWord,
     voteToReveal,
     unvoteToReveal,
+    returnToLobby,
     handleGameUpdate,
   } = useGame(room?.id, room?.current_game_id);
 
@@ -57,7 +58,6 @@ export function RoomPage({ roomName, onChangeRoom }: RoomPageProps) {
   useRoomSubscription(room?.id, subscriptionCallbacks, currentPlayer?.id, currentPlayer?.display_name, players);
   const { lists: wordLists, loading: wordListsLoading, loadWordList } = useWordLists();
   const [joinAttempted, setJoinAttempted] = useState(false);
-  const [lastWordListId, setLastWordListId] = useState('general');
   const [lastSettings, setLastSettings] = useState<CastlefallSettings>({ wordCount: 18, timerDurationMs: 60000 });
   const [soundOn, setSoundOn] = useState(isSoundEnabled);
   const prevPhaseRef = useRef<string | null>(null);
@@ -124,18 +124,6 @@ export function RoomPage({ roomName, onChangeRoom }: RoomPageProps) {
     async (wordListId: string, settings: CastlefallSettings) => {
       if (!players.length) return;
       const words = await loadWordList(wordListId);
-      setLastWordListId(wordListId);
-      setLastSettings(settings);
-      await startGame(words, wordListId, settings);
-    },
-    [players.length, startGame, loadWordList],
-  );
-
-  const handleNewRound = useCallback(
-    async (wordListId: string, settings: CastlefallSettings) => {
-      if (!players.length) return;
-      const words = await loadWordList(wordListId);
-      setLastWordListId(wordListId);
       setLastSettings(settings);
       await startGame(words, wordListId, settings);
     },
@@ -298,8 +286,8 @@ export function RoomPage({ roomName, onChangeRoom }: RoomPageProps) {
         {phase === 'playing' && game && game.game_type === 'castlefall' && (
           <GameBoard
             game={game}
-            words={currentPlayer.word_order ?? game.game_words}
-            assignedWord={currentPlayer.assigned_word}
+            words={currentPlayer.game_id === game.id ? (currentPlayer.word_order ?? game.game_words) : game.game_words}
+            assignedWord={currentPlayer.game_id === game.id ? currentPlayer.assigned_word : null}
             players={players}
             currentPlayer={currentPlayer}
             onDeclareTeam={handleDeclareTeam}
@@ -319,16 +307,13 @@ export function RoomPage({ roomName, onChangeRoom }: RoomPageProps) {
             game={game}
             players={players}
             currentPlayerId={currentPlayer.id}
-            wordLists={wordLists}
-            lastWordListId={lastWordListId}
-            lastSettings={lastSettings}
             pastGames={pastGames}
-            onNewRound={handleNewRound}
+            onReturnToLobby={returnToLobby}
           />
         )}
 
         {phase === 'revealed' && game && game.game_type === 'two_rooms' && (
-          <TwoRoomsResults game={game} players={players} />
+          <TwoRoomsResults game={game} players={players} onReturnToLobby={returnToLobby} />
         )}
       </main>
 

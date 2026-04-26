@@ -125,6 +125,15 @@ export function useRoomSubscription(
             if (existing) clearTimeout(existing);
             const handle = setTimeout(() => {
               pendingCleanups.delete(departedId);
+              // Belt-and-suspenders: if the player has re-tracked under any
+              // presence ref by now, the join event may have raced past us.
+              // Skip the delete if presence still claims this playerId.
+              const state = channel.presenceState() as Record<string, PresenceState[]>;
+              for (const refs of Object.values(state)) {
+                for (const r of refs) {
+                  if (r?.playerId === departedId) return;
+                }
+              }
               supabase.rpc('release_disconnected_player', { p_player_id: departedId }).then();
             }, DISCONNECT_GRACE_MS);
             pendingCleanups.set(departedId, handle);

@@ -4,9 +4,10 @@ import { ShieldSprite, BannerStripSprite, CrownSprite } from '../../components/s
 interface ResultsProps {
   game: Game;
   players: Player[];
+  onReturnToLobby: () => void;
 }
 
-export function TwoRoomsResults({ game, players }: ResultsProps) {
+export function TwoRoomsResults({ game, players, onReturnToLobby }: ResultsProps) {
   const winner = game.winner_team;
   const winnerLabel = winner === 1 ? 'Crimson Team' : winner === 2 ? 'Blue Team' : null;
   const tone = winner === 1 ? 'team2' : winner === 2 ? 'team1' : 'ink';
@@ -63,6 +64,10 @@ export function TwoRoomsResults({ game, players }: ResultsProps) {
           })}
         </ul>
       </section>
+
+      <button onClick={onReturnToLobby} className="btn-seal w-full !py-3.5">
+        Back to lobby
+      </button>
     </div>
   );
 }
