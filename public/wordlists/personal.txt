@@ -12,9 +12,8 @@ Jack Chen
 AderError
 Barack Obama
 Tate McRae
-Zara Larson
+Zara Larsson
 Owala
-Diet Coke
 Burberry
 Chrome Hearts
 Bitchat
@@ -28,5 +27,10 @@ Smirnoff
 Diet Coke
 Spikeball
 Freshman
-
-
+McDonalds
+In-n-Out
+KFC
+Anemia
+Abercrombie
+Preworkout
+Opus 4.7
