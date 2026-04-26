@@ -14,6 +14,11 @@ interface PresenceState {
   displayName: string;
 }
 
+// Grace window before treating a presence-leave as a real disconnect.
+// A page reload fires untrack() then re-tracks within ~1s; waiting here
+// lets the reload cancel its own cleanup so no row churn happens.
+const DISCONNECT_GRACE_MS = 4000;
+
 /**
  * Consolidates room, players, and game subscriptions into a single
  * Supabase Realtime channel per room. Also handles Presence tracking
@@ -37,6 +42,8 @@ export function useRoomSubscription(
   // Create channel once per room — does NOT depend on player identity
   useEffect(() => {
     if (!roomId) return;
+
+    const pendingCleanups = new Map<string, ReturnType<typeof setTimeout>>();
 
     const channel = supabase
       .channel(`room-all-${roomId}`)
@@ -83,6 +90,18 @@ export function useRoomSubscription(
           }
         },
       )
+      .on('presence', { event: 'join' }, ({ newPresences }) => {
+        for (const presence of newPresences) {
+          const state = presence as unknown as PresenceState;
+          const joinedId = state.playerId;
+          if (!joinedId) continue;
+          const pending = pendingCleanups.get(joinedId);
+          if (pending) {
+            clearTimeout(pending);
+            pendingCleanups.delete(joinedId);
+          }
+        }
+      })
       .on('presence', { event: 'leave' }, ({ leftPresences }) => {
         const currentPlayers = playersRef.current;
         const hostId = currentPlayers.length > 0 ? currentPlayers[0].id : null;
@@ -102,7 +121,13 @@ export function useRoomSubscription(
           }
 
           if (shouldCleanup) {
-            supabase.rpc('release_disconnected_player', { p_player_id: departedId }).then();
+            const existing = pendingCleanups.get(departedId);
+            if (existing) clearTimeout(existing);
+            const handle = setTimeout(() => {
+              pendingCleanups.delete(departedId);
+              supabase.rpc('release_disconnected_player', { p_player_id: departedId }).then();
+            }, DISCONNECT_GRACE_MS);
+            pendingCleanups.set(departedId, handle);
           }
         }
       })
@@ -119,6 +144,8 @@ export function useRoomSubscription(
 
     return () => {
       window.removeEventListener('beforeunload', handleBeforeUnload);
+      for (const handle of pendingCleanups.values()) clearTimeout(handle);
+      pendingCleanups.clear();
       channelRef.current = null;
       supabase.removeChannel(channel);
     };
