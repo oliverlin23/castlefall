@@ -63,11 +63,17 @@ export function useGame(roomId: string | undefined, currentGameId: string | null
   );
 
   const startGame = useCallback(
-    async (wordList: string[], wordListName: string, settings: CastlefallSettings = DEFAULT_SETTINGS) => {
+    async (
+      callerId: string,
+      wordList: string[],
+      wordListName: string,
+      settings: CastlefallSettings = DEFAULT_SETTINGS,
+    ) => {
       if (!roomId) return null;
 
       const { data: gameId, error } = await supabase.rpc('start_game_atomic', {
         p_room_id: roomId,
+        p_caller_id: callerId,
         p_words: wordList,
         p_word_list_name: wordListName,
         p_settings: settings,
@@ -121,7 +127,7 @@ export function useGame(roomId: string | undefined, currentGameId: string | null
   );
 
   const voteToReveal = useCallback(
-    async (playerId: string, playerCount: number) => {
+    async (playerId: string) => {
       if (!game?.id) return;
       // Optimistic: add vote immediately
       setGame((prev) => {
@@ -133,7 +139,6 @@ export function useGame(roomId: string | undefined, currentGameId: string | null
       await supabase.rpc('vote_to_reveal', {
         p_game_id: game.id,
         p_player_id: playerId,
-        p_player_count: playerCount,
       });
     },
     [game?.id],

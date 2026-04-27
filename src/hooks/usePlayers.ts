@@ -7,10 +7,12 @@ const PLAYER_STORAGE_KEY = 'castlefall_player';
 interface StoredPlayer {
   id: string;
   name: string;
+  // The field is named roomName for backwards-compatibility with values
+  // already in users' localStorage, but it actually holds the room id (uuid).
   roomName: string;
 }
 
-function getStoredPlayer(): StoredPlayer | null {
+function readStoredPlayer(): StoredPlayer | null {
   try {
     const raw = localStorage.getItem(PLAYER_STORAGE_KEY);
     if (!raw) return null;
@@ -20,8 +22,19 @@ function getStoredPlayer(): StoredPlayer | null {
   }
 }
 
-function storePlayer(id: string, name: string, roomName: string) {
-  localStorage.setItem(PLAYER_STORAGE_KEY, JSON.stringify({ id, name, roomName }));
+// Only returns the stored player when it belongs to the room we're in.
+// Without this guard, opening room B in another tab would overwrite the
+// single localStorage key, and reloading room A would silently re-register
+// the user under room B's identity.
+function getStoredPlayerForRoom(roomId: string | undefined): StoredPlayer | null {
+  if (!roomId) return null;
+  const stored = readStoredPlayer();
+  if (!stored || stored.roomName !== roomId) return null;
+  return stored;
+}
+
+function storePlayer(id: string, name: string, roomId: string) {
+  localStorage.setItem(PLAYER_STORAGE_KEY, JSON.stringify({ id, name, roomName: roomId }));
 }
 
 function clearStoredPlayer() {
@@ -97,7 +110,7 @@ export function usePlayers(roomId: string | undefined, currentGameId?: string | 
     if (!roomId) return null;
     setReconnecting(true);
 
-    const stored = getStoredPlayer();
+    const stored = getStoredPlayerForRoom(roomId);
 
     // Try by stored UUID first
     if (stored?.id) {
@@ -187,7 +200,7 @@ export function usePlayers(roomId: string | undefined, currentGameId?: string | 
     [],
   );
 
-  const storedPlayer = getStoredPlayer();
+  const storedPlayer = getStoredPlayerForRoom(roomId);
 
   return {
     players,
