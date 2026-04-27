@@ -26,7 +26,7 @@ export function RoomSelector({ currentRoom, onChangeRoom }: RoomSelectorProps) {
           type="text"
           value={roomInput}
           onChange={(e) => setRoomInput(e.target.value)}
-          placeholder="chamber name…"
+          placeholder="room name…"
           autoFocus
           className="w-28 sm:w-40 !py-1 !px-2 !text-[12px]"
         />
