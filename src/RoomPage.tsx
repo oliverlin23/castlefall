@@ -45,6 +45,7 @@ export function RoomPage({ roomName, onChangeRoom }: RoomPageProps) {
     declareWord,
     voteToReveal,
     unvoteToReveal,
+    returnToLobby,
     handleGameUpdate,
   } = useGame(room?.id, room?.current_game_id);
 
@@ -57,7 +58,6 @@ export function RoomPage({ roomName, onChangeRoom }: RoomPageProps) {
   useRoomSubscription(room?.id, subscriptionCallbacks, currentPlayer?.id, currentPlayer?.display_name, players);
   const { lists: wordLists, loading: wordListsLoading, loadWordList } = useWordLists();
   const [joinAttempted, setJoinAttempted] = useState(false);
-  const [lastWordListId, setLastWordListId] = useState('general');
   const [lastSettings, setLastSettings] = useState<CastlefallSettings>({ wordCount: 18, timerDurationMs: 60000 });
   const [soundOn, setSoundOn] = useState(isSoundEnabled);
   const prevPhaseRef = useRef<string | null>(null);
@@ -124,18 +124,6 @@ export function RoomPage({ roomName, onChangeRoom }: RoomPageProps) {
     async (wordListId: string, settings: CastlefallSettings) => {
       if (!players.length || !currentPlayer) return;
       const words = await loadWordList(wordListId);
-      setLastWordListId(wordListId);
-      setLastSettings(settings);
-      await startGame(currentPlayer.id, words, wordListId, settings);
-    },
-    [players.length, currentPlayer, startGame, loadWordList],
-  );
-
-  const handleNewRound = useCallback(
-    async (wordListId: string, settings: CastlefallSettings) => {
-      if (!players.length || !currentPlayer) return;
-      const words = await loadWordList(wordListId);
-      setLastWordListId(wordListId);
       setLastSettings(settings);
       await startGame(currentPlayer.id, words, wordListId, settings);
     },
@@ -230,15 +218,15 @@ export function RoomPage({ roomName, onChangeRoom }: RoomPageProps) {
   );
 
   if (roomLoading) {
-    return <StatusScreen message="Unsealing the room…" />;
+    return <StatusScreen message="Loading room…" />;
   }
 
   if (!room) {
-    return <StatusScreen message="The herald could not find that chamber. Try refreshing." muted />;
+    return <StatusScreen message="Couldn't load room. Try refreshing." muted />;
   }
 
   if (reconnecting) {
-    return <StatusScreen message="Reconnecting the courier…" />;
+    return <StatusScreen message="Reconnecting…" />;
   }
 
   if (!currentPlayer && joinAttempted) {
@@ -258,7 +246,7 @@ export function RoomPage({ roomName, onChangeRoom }: RoomPageProps) {
   }
 
   if (!currentPlayer) {
-    return <StatusScreen message="Joining the chamber…" />;
+    return <StatusScreen message="Joining…" />;
   }
 
   const phase =
@@ -307,8 +295,8 @@ export function RoomPage({ roomName, onChangeRoom }: RoomPageProps) {
         {phase === 'playing' && game && game.game_type === 'castlefall' && (
           <GameBoard
             game={game}
-            words={currentPlayer.word_order ?? game.game_words}
-            assignedWord={currentPlayer.assigned_word}
+            words={currentPlayer.game_id === game.id ? (currentPlayer.word_order ?? game.game_words) : game.game_words}
+            assignedWord={currentPlayer.game_id === game.id ? currentPlayer.assigned_word : null}
             players={players}
             currentPlayer={currentPlayer}
             onDeclareTeam={handleDeclareTeam}
@@ -328,16 +316,13 @@ export function RoomPage({ roomName, onChangeRoom }: RoomPageProps) {
             game={game}
             players={players}
             currentPlayerId={currentPlayer.id}
-            wordLists={wordLists}
-            lastWordListId={lastWordListId}
-            lastSettings={lastSettings}
             pastGames={pastGames}
-            onNewRound={handleNewRound}
+            onReturnToLobby={returnToLobby}
           />
         )}
 
         {phase === 'revealed' && game && game.game_type === 'two_rooms' && (
-          <TwoRoomsResults game={game} players={players} />
+          <TwoRoomsResults game={game} players={players} onReturnToLobby={returnToLobby} />
         )}
       </main>
 

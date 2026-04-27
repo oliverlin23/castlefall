@@ -134,7 +134,7 @@ export function Lobby({
           <div className="flex items-center gap-4 border border-dashed border-[color:var(--color-ink-soft)] px-5 py-6">
             <TowerSprite className="h-12 w-auto text-[color:var(--color-ink-soft)]" />
             <p className="text-[12px] text-[color:var(--color-ink-mid)] leading-relaxed">
-              The chamber is empty. Share the invite link to summon players.
+              No one's joined yet. Share the link to invite players.
             </p>
           </div>
         ) : (
@@ -228,7 +228,7 @@ export function Lobby({
             className="btn-seal w-full !py-4 !text-[14px]"
           >
             {twoRoomsCanStart
-              ? 'Sound the horn'
+              ? 'Start Game'
               : players.length < 6
                 ? `Awaiting ${6 - players.length} more (${players.length}/6)`
                 : 'Too many players (max 30)'}

@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import { supabase } from '../lib/supabase';
 import type { Player } from '../types';
 
@@ -46,6 +46,8 @@ export function usePlayers(roomId: string | undefined, currentGameId?: string | 
   const [currentPlayer, setCurrentPlayer] = useState<Player | null>(null);
   const [reconnecting, setReconnecting] = useState(false);
   const [playersLoaded, setPlayersLoaded] = useState(false);
+  const tombstonesRef = useRef<Set<string>>(new Set());
+  const eventsSeenRef = useRef(false);
 
   const fetchPlayers = useCallback(async () => {
     if (!roomId) return;
@@ -55,12 +57,23 @@ export function usePlayers(roomId: string | undefined, currentGameId?: string | 
       .eq('room_id', roomId)
       .order('joined_at', { ascending: true });
     if (data) {
-      setPlayers(data);
-      // Resync currentPlayer from authoritative DB state in case a
-      // realtime UPDATE for this player was dropped (e.g. start_game_atomic
-      // assigned the team / word but the per-row CDC never arrived).
+      setPlayers((prev) => {
+        const filtered = data.filter((p) => !tombstonesRef.current.has(p.id));
+        // If realtime has already mutated `prev`, trust prev for any id it knows;
+        // only add rows from the snapshot that prev hasn't seen.
+        if (!eventsSeenRef.current) return filtered;
+        const byId = new Map(prev.map((p) => [p.id, p]));
+        for (const p of filtered) if (!byId.has(p.id)) byId.set(p.id, p);
+        return Array.from(byId.values()).sort(
+          (a, b) => new Date(a.joined_at).getTime() - new Date(b.joined_at).getTime(),
+        );
+      });
+      // Resync currentPlayer from authoritative DB state in case a realtime
+      // UPDATE for this player was dropped (e.g. start_game_atomic assigned
+      // the team / word but the per-row CDC never arrived).
       setCurrentPlayer((cur) => {
         if (!cur) return cur;
+        if (tombstonesRef.current.has(cur.id)) return cur;
         return data.find((p) => p.id === cur.id) ?? cur;
       });
     }
@@ -179,6 +192,7 @@ export function usePlayers(roomId: string | undefined, currentGameId?: string | 
   /** Handle player events from the unified subscription. */
   const handlePlayerEvent = useCallback(
     (eventType: string, payload: { new?: Player; old?: Player }) => {
+      eventsSeenRef.current = true;
       if (eventType === 'INSERT' && payload.new) {
         const newPlayer = payload.new;
         setPlayers((prev) => {
@@ -193,6 +207,7 @@ export function usePlayers(roomId: string | undefined, currentGameId?: string | 
         setCurrentPlayer((cur) => (cur && cur.id === updated.id ? updated : cur));
       } else if (eventType === 'DELETE' && payload.old) {
         const deletedId = payload.old.id;
+        tombstonesRef.current.add(deletedId);
         setPlayers((prev) => prev.filter((p) => p.id !== deletedId));
         setCurrentPlayer((cur) => (cur && cur.id === deletedId ? null : cur));
       }

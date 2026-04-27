@@ -28,7 +28,8 @@ export function VictoryDeclaration({
   const [wordGuess, setWordGuess] = useState('');
   const [showWordGuess, setShowWordGuess] = useState(false);
 
-  const n = useMemo(() => suggestedN(players.length), [players.length]);
+  const maxN = useMemo(() => suggestedN(players.length), [players.length]);
+  const minN = 2;
   const timerDurationMs =
     (game.settings && 'timerDurationMs' in game.settings ? game.settings.timerDurationMs : undefined) ?? 60_000;
 
@@ -47,7 +48,7 @@ export function VictoryDeclaration({
 
   function handleDeclareTeam(e: FormEvent) {
     e.preventDefault();
-    if (selectedPlayers.size >= n) {
+    if (selectedPlayers.size >= minN && selectedPlayers.size <= maxN) {
       playSound('declare');
       onDeclareTeam(Array.from(selectedPlayers));
     }
@@ -169,8 +170,12 @@ export function VictoryDeclaration({
       {!showWordGuess ? (
         <form onSubmit={handleDeclareTeam} className="space-y-3 animate-fade-in">
           <p className="text-[12px] text-[color:var(--color-ink-mid)]">
-            Select <strong className="text-[color:var(--color-ink)]">{n}</strong> players (including yourself)
-            you believe are on your team.
+            Select{' '}
+            <strong className="text-[color:var(--color-ink)]">
+              {minN}–{maxN}
+            </strong>{' '}
+            players (including yourself) you believe are on your team. You win
+            only if your selection exactly matches your team.
           </p>
           <div className="flex flex-wrap gap-1.5">
             {players.map((p) => {
@@ -196,10 +201,12 @@ export function VictoryDeclaration({
           </div>
           <button
             type="submit"
-            disabled={selectedPlayers.size < n}
+            disabled={
+              selectedPlayers.size < minN || selectedPlayers.size > maxN
+            }
             className="btn-seal w-full !py-2.5 !text-[12px]"
           >
-            Declare Team ({selectedPlayers.size}/{n})
+            Declare Team ({selectedPlayers.size} selected)
           </button>
         </form>
       ) : (

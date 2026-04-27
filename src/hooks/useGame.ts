@@ -161,6 +161,11 @@ export function useGame(roomId: string | undefined, currentGameId: string | null
     [game?.id],
   );
 
+  const returnToLobby = useCallback(async () => {
+    if (!roomId) return;
+    await supabase.rpc('return_to_lobby', { p_room_id: roomId });
+  }, [roomId]);
+
   const startTwoRoomsGame = useCallback(async () => {
     if (!roomId) return null;
     const { data: gameId, error } = await supabase.rpc('start_two_rooms_game', {
@@ -173,5 +178,5 @@ export function useGame(roomId: string | undefined, currentGameId: string | null
     return gameId as string;
   }, [roomId]);
 
-  return { game, pastGames, loading, startGame, startTwoRoomsGame, revealGame, declareTeam, declareWord, voteToReveal, unvoteToReveal, handleGameUpdate };
+  return { game, pastGames, loading, startGame, startTwoRoomsGame, revealGame, declareTeam, declareWord, voteToReveal, unvoteToReveal, returnToLobby, handleGameUpdate };
 }

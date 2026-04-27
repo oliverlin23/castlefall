@@ -1,20 +1,20 @@
--- Phase 7: start_game_atomic gets a host check and a row lock to prevent
--- concurrent starts and to stop late-joining players from being missed
--- between the player roster fetch and the per-player update loop.
+-- Phase 8: start_game_atomic gets a host check and row locks (rebased on
+-- top of migration 20250101000019_fix_round_resets, which now wipes
+-- per-round state at the top of the function).
 --
 -- Two bugs fixed:
 --
--- 1. The roster fetch (`select array_agg(id) ... where room_id = ...`) had
---    no row lock. A new player INSERT between the fetch and the update loop
---    would never get a team or assigned_word. The new CTE-with-FOR-UPDATE
---    locks the player rows for the duration of the function and uses a
---    single shuffle so the resulting arrays correspond.
+-- 1. The roster fetch (`array_agg(id) ... where room_id = ...`) had no
+--    row lock. A late-joining INSERT between the fetch and the
+--    per-player UPDATE loop would never get a team or assigned_word.
+--    The CTE-with-FOR-UPDATE locks the player rows for the duration of
+--    the function and uses the same single-shuffle pattern.
 --
--- 2. The function accepted no caller id, so any client could trigger a
---    start, and two simultaneous starts would each insert a game and
---    interleave per-player updates. Now we lock the room row first,
---    re-read current_game_id under the lock, abort if a game is already
---    active, and require the caller to be the earliest-joined player
+-- 2. The function took no caller id and had no host check, so any
+--    client could start a game and two simultaneous starts could
+--    interleave per-player UPDATEs. Now we lock the rooms row first to
+--    serialize concurrent calls, abort if another active game already
+--    exists, and require the caller to match the earliest-joined player
 --    (matching the host convention used by kick_player).
 
 drop function if exists start_game_atomic(uuid, jsonb, text, jsonb);
@@ -75,9 +75,20 @@ begin
     raise exception 'Only the host may start a game';
   end if;
 
+  -- Wipe leftover per-round state (preserved from migration 19) so any
+  -- player who races in after the snapshot below has NULLs rather than
+  -- relics from the previous round.
+  update players set
+    game_id = null,
+    team = null,
+    assigned_word = null,
+    word_order = null,
+    role = null
+  where room_id = p_room_id;
+
   -- Lock the player rows for the duration of the function so a late join
-  -- cannot land between the roster fetch and the update loop. Single shuffle
-  -- in the CTE; aggregates without ORDER BY preserve correspondence.
+  -- cannot land between the roster fetch and the update loop. Single
+  -- shuffle in the CTE; aggregates without ORDER BY preserve correspondence.
   with locked as (
     select id, display_name
     from players

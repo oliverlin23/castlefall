@@ -119,7 +119,7 @@ export function Chat({ roomId, playerName }: ChatProps) {
       <div className="flex items-center justify-between px-3 py-2 border-b border-[color:var(--color-ink)] bg-[color:var(--color-paper)]">
         <span className="section-label flex items-center gap-1.5">
           <ChatGlyph className="h-3.5 w-3.5" />
-          // Couriers
+          // Chat
         </span>
         <button
           onClick={() => setOpen(false)}

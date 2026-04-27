@@ -1,16 +1,21 @@
--- Phase 7: Fix start_two_rooms_game shuffle so player ids and names stay aligned.
+-- Phase 8: Fix Two Rooms player id/name scramble (rebased on top of
+-- migration 20250101000019_fix_round_resets, which now wipes per-round
+-- state at the top of start_two_rooms_game but still aggregates with two
+-- independent ORDER BY random() clauses).
 --
--- The previous version used:
+-- Previous body:
 --   array_agg(id order by random()), array_agg(display_name order by random())
--- Two independent ORDER BY random() clauses produce *different* orderings for
--- each aggregate, so v_player_ids[i] and v_player_names[i] referred to two
--- different players. Roles assigned to the players table were correct, but
--- games.player_teams[id].name was the wrong player's name. That field is
--- consumed by src/lib/scoring.ts for the persistent Scoreboard, so historical
--- Two Rooms games show scrambled names against wins/losses.
+-- Two independent ORDER BY random() clauses produce *different* orderings
+-- per aggregate, so v_player_ids[i] and v_player_names[i] referred to two
+-- different players. Roles assigned to the players table are correct
+-- (each `update ... where id = v_player_ids[i]` lines up), but
+-- games.player_teams[id].name held the wrong player's name. That field
+-- is consumed by src/lib/scoring.ts for the persistent Scoreboard, so
+-- historical Two Rooms games show scrambled names.
 --
--- Fix: shuffle once in the inner subquery and aggregate without ORDER BY so
--- both arrays follow the same input order.
+-- Fix: shuffle once in the inner subquery and aggregate without ORDER BY
+-- so both arrays follow the same order. Past games' player_teams are
+-- not back-filled — fix forward only.
 
 create or replace function start_two_rooms_game(
   p_room_id uuid
@@ -36,6 +41,15 @@ declare
   v_player_teams jsonb := '{}'::jsonb;
   v_gambler boolean;
 begin
+  -- Wipe any leftover per-round state (from migration …19_fix_round_resets).
+  update players set
+    game_id = null,
+    team = null,
+    assigned_word = null,
+    word_order = null,
+    role = null
+  where room_id = p_room_id;
+
   -- DO NOT add `order by random()` to the individual array_agg calls — each
   -- one would produce its own ordering and the two arrays would no longer
   -- correspond. The single `order by random()` in the inner subquery shuffles
