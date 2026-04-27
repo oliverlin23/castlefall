@@ -4,5 +4,6 @@
   { "id": "places", "name": "Places", "file": "places.txt" },
   { "id": "food", "name": "Food & Drink", "file": "food.txt" },
   { "id": "objects", "name": "Objects", "file": "objects.txt" },
-  { "id": "mythology", "name": "Mythology & Fantasy", "file": "mythology.txt" }
+  { "id": "mythology", "name": "Mythology & Fantasy", "file": "mythology.txt" },
+  { "id": "personal", "name": "Personal", "file": "personal.txt" }
 ]

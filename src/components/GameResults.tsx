@@ -1,6 +1,4 @@
-import { useState } from 'react';
-import type { Game, Player, CastlefallSettings } from '../types';
-import type { WordListMeta } from '../hooks/useWordLists';
+import type { Game, Player } from '../types';
 import { PlayerList } from './PlayerList';
 import { Scoreboard } from './Scoreboard';
 import { CrownSprite, ShieldSprite, BannerStripSprite, FallenCastleSprite, CastleSprite } from './sprites';
@@ -9,11 +7,8 @@ interface GameResultsProps {
   game: Game;
   players: Player[];
   currentPlayerId?: string;
-  wordLists: WordListMeta[];
-  lastWordListId: string;
-  lastSettings: CastlefallSettings;
   pastGames: Game[];
-  onNewRound: (wordListId: string, settings: CastlefallSettings) => void;
+  onReturnToLobby: () => void;
 }
 
 function outcomeMessage(game: Game, players: Player[]): string | null {
@@ -45,14 +40,9 @@ export function GameResults({
   game,
   players,
   currentPlayerId,
-  wordLists,
-  lastWordListId,
-  lastSettings,
   pastGames,
-  onNewRound,
+  onReturnToLobby,
 }: GameResultsProps) {
-  const [selectedList, setSelectedList] = useState(lastWordListId);
-
   const team1Players = players.filter((p) => p.team === 1);
   const team2Players = players.filter((p) => p.team === 2);
   const teamWords = game.team_words as Record<number, string>;
@@ -118,30 +108,11 @@ export function GameResults({
         />
       </div>
 
-      {/* NEXT ROUND */}
-      <section className="ink-card p-5 space-y-3">
-        <label htmlFor="next-word-list" className="section-label block">
-          // Next round
-        </label>
-        <select
-          id="next-word-list"
-          value={selectedList}
-          onChange={(e) => setSelectedList(e.target.value)}
-          className="w-full"
-        >
-          {wordLists.map((wl) => (
-            <option key={wl.id} value={wl.id}>
-              {wl.name}
-            </option>
-          ))}
-        </select>
-      </section>
-
       <button
-        onClick={() => onNewRound(selectedList, lastSettings)}
+        onClick={onReturnToLobby}
         className="btn-seal w-full !py-3.5"
       >
-        Start a new round
+        Back to lobby
       </button>
     </div>
   );
