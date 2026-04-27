@@ -7,10 +7,12 @@ const PLAYER_STORAGE_KEY = 'castlefall_player';
 interface StoredPlayer {
   id: string;
   name: string;
+  // The field is named roomName for backwards-compatibility with values
+  // already in users' localStorage, but it actually holds the room id (uuid).
   roomName: string;
 }
 
-function getStoredPlayer(): StoredPlayer | null {
+function readStoredPlayer(): StoredPlayer | null {
   try {
     const raw = localStorage.getItem(PLAYER_STORAGE_KEY);
     if (!raw) return null;
@@ -20,15 +22,26 @@ function getStoredPlayer(): StoredPlayer | null {
   }
 }
 
-function storePlayer(id: string, name: string, roomName: string) {
-  localStorage.setItem(PLAYER_STORAGE_KEY, JSON.stringify({ id, name, roomName }));
+// Only returns the stored player when it belongs to the room we're in.
+// Without this guard, opening room B in another tab would overwrite the
+// single localStorage key, and reloading room A would silently re-register
+// the user under room B's identity.
+function getStoredPlayerForRoom(roomId: string | undefined): StoredPlayer | null {
+  if (!roomId) return null;
+  const stored = readStoredPlayer();
+  if (!stored || stored.roomName !== roomId) return null;
+  return stored;
+}
+
+function storePlayer(id: string, name: string, roomId: string) {
+  localStorage.setItem(PLAYER_STORAGE_KEY, JSON.stringify({ id, name, roomName: roomId }));
 }
 
 function clearStoredPlayer() {
   localStorage.removeItem(PLAYER_STORAGE_KEY);
 }
 
-export function usePlayers(roomId: string | undefined) {
+export function usePlayers(roomId: string | undefined, currentGameId?: string | null) {
   const [players, setPlayers] = useState<Player[]>([]);
   const [currentPlayer, setCurrentPlayer] = useState<Player | null>(null);
   const [reconnecting, setReconnecting] = useState(false);
@@ -54,6 +67,14 @@ export function usePlayers(roomId: string | undefined) {
         return Array.from(byId.values()).sort(
           (a, b) => new Date(a.joined_at).getTime() - new Date(b.joined_at).getTime(),
         );
+      });
+      // Resync currentPlayer from authoritative DB state in case a realtime
+      // UPDATE for this player was dropped (e.g. start_game_atomic assigned
+      // the team / word but the per-row CDC never arrived).
+      setCurrentPlayer((cur) => {
+        if (!cur) return cur;
+        if (tombstonesRef.current.has(cur.id)) return cur;
+        return data.find((p) => p.id === cur.id) ?? cur;
       });
     }
     setPlayersLoaded(true);
@@ -102,7 +123,7 @@ export function usePlayers(roomId: string | undefined) {
     if (!roomId) return null;
     setReconnecting(true);
 
-    const stored = getStoredPlayer();
+    const stored = getStoredPlayerForRoom(roomId);
 
     // Try by stored UUID first
     if (stored?.id) {
@@ -159,11 +180,14 @@ export function usePlayers(roomId: string | undefined) {
     });
   }, [currentPlayer]);
 
-  // Fetch players on mount
+  // Fetch players on mount, and resync whenever a new game starts so we
+  // pick up team / assigned_word even if individual row CDC events were
+  // dropped between start_game_atomic's per-player updates and the final
+  // rooms.current_game_id update.
   useEffect(() => {
     if (!roomId) return;
     fetchPlayers();
-  }, [roomId, fetchPlayers]);
+  }, [roomId, currentGameId, fetchPlayers]);
 
   /** Handle player events from the unified subscription. */
   const handlePlayerEvent = useCallback(
@@ -191,7 +215,7 @@ export function usePlayers(roomId: string | undefined) {
     [],
   );
 
-  const storedPlayer = getStoredPlayer();
+  const storedPlayer = getStoredPlayerForRoom(roomId);
 
   return {
     players,

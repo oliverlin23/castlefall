@@ -34,7 +34,7 @@ export function RoomPage({ roomName, onChangeRoom }: RoomPageProps) {
     handlePlayerEvent,
     storedName,
     playersLoaded,
-  } = usePlayers(room?.id);
+  } = usePlayers(room?.id, room?.current_game_id);
   const {
     game,
     pastGames,
@@ -122,12 +122,12 @@ export function RoomPage({ roomName, onChangeRoom }: RoomPageProps) {
 
   const handleStartGame = useCallback(
     async (wordListId: string, settings: CastlefallSettings) => {
-      if (!players.length) return;
+      if (!players.length || !currentPlayer) return;
       const words = await loadWordList(wordListId);
       setLastSettings(settings);
-      await startGame(words, wordListId, settings);
+      await startGame(currentPlayer.id, words, wordListId, settings);
     },
-    [players.length, startGame, loadWordList],
+    [players.length, currentPlayer, startGame, loadWordList],
   );
 
   const handleDeclareTeam = useCallback(
@@ -148,15 +148,24 @@ export function RoomPage({ roomName, onChangeRoom }: RoomPageProps) {
 
   const handleTimerExpired = useCallback(() => {
     if (!game || !currentPlayer) return;
-    if (game.declaration_player_id === currentPlayer.id) {
+    // Every client triggers reveal so the game doesn't hang at "0s" when
+    // the declarer's tab is closed mid-timer. reveal_game is idempotent
+    // under its `for update where status='active'` lock, so duplicate
+    // calls from N players are no-ops after the first. Deterministic
+    // jitter keyed off player index keeps us from all hitting the RPC
+    // in the same instant; the declarer fires immediately.
+    const isDeclarer = game.declaration_player_id === currentPlayer.id;
+    const idx = players.findIndex((p) => p.id === currentPlayer.id);
+    const jitter = isDeclarer ? 0 : Math.min(750, Math.max(0, idx) * 150);
+    setTimeout(() => {
       revealGame();
-    }
-  }, [game, currentPlayer, revealGame]);
+    }, jitter);
+  }, [game, currentPlayer, players, revealGame]);
 
   const handleVoteToReveal = useCallback(() => {
     if (!currentPlayer) return;
-    voteToReveal(currentPlayer.id, players.length);
-  }, [currentPlayer, players.length, voteToReveal]);
+    voteToReveal(currentPlayer.id);
+  }, [currentPlayer, voteToReveal]);
 
   const handleUnvoteToReveal = useCallback(() => {
     if (!currentPlayer) return;
