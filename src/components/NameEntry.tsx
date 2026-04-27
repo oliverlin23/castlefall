@@ -22,10 +22,10 @@ export function NameEntry({ defaultName, onSubmit }: NameEntryProps) {
           <QuillSprite className="h-6 w-6 text-[color:var(--color-ink)]" />
           <div className="space-y-0.5">
             <h2 className="display-heading text-[20px] leading-tight text-[color:var(--color-ink)]">
-              Sign your name
+              Your name
             </h2>
             <p className="text-[12px] text-[color:var(--color-ink-mid)]">
-              The herald needs to know who has joined the chamber.
+              Choose a display name.
             </p>
           </div>
         </div>
@@ -34,13 +34,13 @@ export function NameEntry({ defaultName, onSubmit }: NameEntryProps) {
             type="text"
             value={name}
             onChange={(e) => setName(e.target.value)}
-            placeholder="Your given name…"
+            placeholder="Your name…"
             autoFocus
             maxLength={24}
             className="w-full text-[15px]"
           />
           <button type="submit" disabled={!name.trim()} className="btn-seal w-full">
-            Sign &amp; Enter
+            Join
           </button>
         </form>
       </div>

@@ -209,15 +209,15 @@ export function RoomPage({ roomName, onChangeRoom }: RoomPageProps) {
   );
 
   if (roomLoading) {
-    return <StatusScreen message="Unsealing the room…" />;
+    return <StatusScreen message="Loading room…" />;
   }
 
   if (!room) {
-    return <StatusScreen message="The herald could not find that chamber. Try refreshing." muted />;
+    return <StatusScreen message="Couldn't load room. Try refreshing." muted />;
   }
 
   if (reconnecting) {
-    return <StatusScreen message="Reconnecting the courier…" />;
+    return <StatusScreen message="Reconnecting…" />;
   }
 
   if (!currentPlayer && joinAttempted) {
@@ -237,7 +237,7 @@ export function RoomPage({ roomName, onChangeRoom }: RoomPageProps) {
   }
 
   if (!currentPlayer) {
-    return <StatusScreen message="Joining the chamber…" />;
+    return <StatusScreen message="Joining…" />;
   }
 
   const phase =
