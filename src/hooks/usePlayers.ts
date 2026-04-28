@@ -48,6 +48,7 @@ export function usePlayers(roomId: string | undefined, currentGameId?: string | 
   const [playersLoaded, setPlayersLoaded] = useState(false);
   const tombstonesRef = useRef<Set<string>>(new Set());
   const eventsSeenRef = useRef(false);
+  const resyncTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const fetchPlayers = useCallback(async () => {
     if (!roomId) return;
@@ -80,6 +81,14 @@ export function usePlayers(roomId: string | undefined, currentGameId?: string | 
     setPlayersLoaded(true);
   }, [roomId]);
 
+  const schedulePlayersResync = useCallback(() => {
+    if (resyncTimerRef.current) clearTimeout(resyncTimerRef.current);
+    resyncTimerRef.current = setTimeout(() => {
+      fetchPlayers();
+      resyncTimerRef.current = null;
+    }, 250);
+  }, [fetchPlayers]);
+
   const registerPlayer = useCallback(
     async (displayName: string) => {
       if (!roomId) return null;
@@ -92,12 +101,13 @@ export function usePlayers(roomId: string | undefined, currentGameId?: string | 
         .select('*')
         .eq('room_id', roomId)
         .eq('display_name', trimmed)
-        .single();
+        .maybeSingle();
 
       if (existing) {
         supabase.rpc('update_heartbeat', { p_player_id: existing.id });
         setCurrentPlayer(existing);
         storePlayer(existing.id, trimmed, roomId);
+        schedulePlayersResync();
         return existing;
       }
 
@@ -108,15 +118,33 @@ export function usePlayers(roomId: string | undefined, currentGameId?: string | 
         .single();
 
       if (error) {
+        // Join/reload races can trip the unique (room_id, display_name) index.
+        // If so, fetch the existing row and continue as that player.
+        if (error.code === '23505') {
+          const { data: racedExisting } = await supabase
+            .from('players')
+            .select('*')
+            .eq('room_id', roomId)
+            .eq('display_name', trimmed)
+            .maybeSingle();
+          if (racedExisting) {
+            supabase.rpc('update_heartbeat', { p_player_id: racedExisting.id });
+            setCurrentPlayer(racedExisting);
+            storePlayer(racedExisting.id, trimmed, roomId);
+            schedulePlayersResync();
+            return racedExisting;
+          }
+        }
         console.error('Failed to register player:', error);
         return null;
       }
 
       setCurrentPlayer(created);
       storePlayer(created.id, trimmed, roomId);
+      schedulePlayersResync();
       return created;
     },
-    [roomId],
+    [roomId, schedulePlayersResync],
   );
 
   const tryReconnect = useCallback(async () => {
@@ -138,6 +166,7 @@ export function usePlayers(roomId: string | undefined, currentGameId?: string | 
         supabase.rpc('update_heartbeat', { p_player_id: data.id });
         setCurrentPlayer(data);
         storePlayer(data.id, data.display_name, roomId);
+        schedulePlayersResync();
         setReconnecting(false);
         return data;
       }
@@ -156,6 +185,7 @@ export function usePlayers(roomId: string | undefined, currentGameId?: string | 
         supabase.rpc('update_heartbeat', { p_player_id: data.id });
         setCurrentPlayer(data);
         storePlayer(data.id, data.display_name, roomId);
+        schedulePlayersResync();
         setReconnecting(false);
         return data;
       }
@@ -163,7 +193,7 @@ export function usePlayers(roomId: string | undefined, currentGameId?: string | 
 
     setReconnecting(false);
     return null;
-  }, [roomId]);
+  }, [roomId, schedulePlayersResync]);
 
   const leaveRoom = useCallback(async () => {
     if (!currentPlayer) return;
@@ -189,6 +219,12 @@ export function usePlayers(roomId: string | undefined, currentGameId?: string | 
     fetchPlayers();
   }, [roomId, currentGameId, fetchPlayers]);
 
+  useEffect(() => {
+    return () => {
+      if (resyncTimerRef.current) clearTimeout(resyncTimerRef.current);
+    };
+  }, []);
+
   /** Handle player events from the unified subscription. */
   const handlePlayerEvent = useCallback(
     (eventType: string, payload: { new?: Player; old?: Player }) => {
@@ -201,9 +237,11 @@ export function usePlayers(roomId: string | undefined, currentGameId?: string | 
         });
       } else if (eventType === 'UPDATE' && payload.new) {
         const updated = payload.new;
-        setPlayers((prev) =>
-          prev.map((p) => (p.id === updated.id ? updated : p)),
-        );
+        setPlayers((prev) => {
+          const idx = prev.findIndex((p) => p.id === updated.id);
+          if (idx === -1) return [...prev, updated];
+          return prev.map((p) => (p.id === updated.id ? updated : p));
+        });
         setCurrentPlayer((cur) => (cur && cur.id === updated.id ? updated : cur));
       } else if (eventType === 'DELETE' && payload.old) {
         const deletedId = payload.old.id;
@@ -211,8 +249,9 @@ export function usePlayers(roomId: string | undefined, currentGameId?: string | 
         setPlayers((prev) => prev.filter((p) => p.id !== deletedId));
         setCurrentPlayer((cur) => (cur && cur.id === deletedId ? null : cur));
       }
+      schedulePlayersResync();
     },
-    [],
+    [schedulePlayersResync],
   );
 
   const storedPlayer = getStoredPlayerForRoom(roomId);
