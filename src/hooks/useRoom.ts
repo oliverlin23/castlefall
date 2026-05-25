@@ -40,12 +40,6 @@ export function useRoom(roomName: string) {
     setRoom(updated);
   }, []);
 
-  /** Mark room inactive (called when no players remain). */
-  const deactivateRoom = useCallback(async () => {
-    if (!room?.id) return;
-    await supabase.rpc('deactivate_room', { p_room_id: room.id });
-  }, [room?.id]);
-
   /** Change the game type for this room. Syncs to all clients via CDC. */
   const setGameType = useCallback(async (gameType: GameType) => {
     if (!room?.id) return;
@@ -57,5 +51,5 @@ export function useRoom(roomName: string) {
     });
   }, [room?.id]);
 
-  return { room, loading, joinRoom, deactivateRoom, handleRoomUpdate, setGameType };
+  return { room, loading, joinRoom, handleRoomUpdate, setGameType };
 }

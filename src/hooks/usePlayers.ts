@@ -60,14 +60,13 @@ export function usePlayers(roomId: string | undefined, currentGameId?: string | 
     if (data) {
       setPlayers((prev) => {
         const filtered = data.filter((p) => !tombstonesRef.current.has(p.id));
-        // If realtime has already mutated `prev`, trust prev for any id it knows;
-        // only add rows from the snapshot that prev hasn't seen.
         if (!eventsSeenRef.current) return filtered;
-        const byId = new Map(prev.map((p) => [p.id, p]));
-        for (const p of filtered) if (!byId.has(p.id)) byId.set(p.id, p);
-        return Array.from(byId.values()).sort(
-          (a, b) => new Date(a.joined_at).getTime() - new Date(b.joined_at).getTime(),
-        );
+        // The snapshot is the authoritative roster — drop any prev rows it
+        // doesn't contain (otherwise rows deleted server-side persist as
+        // ghosts). Prefer prev's version for ids that exist in both, since
+        // realtime may have delivered a fresher UPDATE than this read.
+        const prevById = new Map(prev.map((p) => [p.id, p]));
+        return filtered.map((p) => prevById.get(p.id) ?? p);
       });
       // Resync currentPlayer from authoritative DB state in case a realtime
       // UPDATE for this player was dropped (e.g. start_game_atomic assigned

@@ -5,7 +5,6 @@ export interface Room {
   name: string;
   created_at: string;
   current_game_id: string | null;
-  active: boolean;
   game_type: GameType;
 }
 

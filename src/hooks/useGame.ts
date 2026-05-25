@@ -164,7 +164,11 @@ export function useGame(roomId: string | undefined, currentGameId: string | null
   const returnToLobby = useCallback(
     async (callerId: string) => {
       if (!roomId) return;
-      await supabase.rpc('return_to_lobby', { p_room_id: roomId, p_caller_id: callerId });
+      const { error } = await supabase.rpc('return_to_lobby', {
+        p_room_id: roomId,
+        p_caller_id: callerId,
+      });
+      if (error) console.error('return_to_lobby failed:', error);
     },
     [roomId],
   );

@@ -23,7 +23,7 @@ interface RoomPageProps {
 }
 
 export function RoomPage({ roomName, onChangeRoom }: RoomPageProps) {
-  const { room, loading: roomLoading, deactivateRoom, handleRoomUpdate, setGameType } = useRoom(roomName);
+  const { room, loading: roomLoading, handleRoomUpdate, setGameType } = useRoom(roomName);
   const {
     players,
     currentPlayer,
@@ -78,13 +78,6 @@ export function RoomPage({ roomName, onChangeRoom }: RoomPageProps) {
       });
     }
   }, [room?.id, currentPlayer, joinAttempted, storedName, tryReconnect, registerPlayer]);
-
-  // Deactivate room when all players leave
-  useEffect(() => {
-    if (room?.id && players.length === 0 && currentPlayer === null && joinAttempted && playersLoaded && !reconnecting) {
-      deactivateRoom();
-    }
-  }, [room?.id, players.length, currentPlayer, joinAttempted, playersLoaded, reconnecting, deactivateRoom]);
 
   // Sound effects for phase changes and player joins
   useEffect(() => {
