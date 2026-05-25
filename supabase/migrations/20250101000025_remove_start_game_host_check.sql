@@ -1,30 +1,15 @@
--- Phase 8: start_game_atomic gets a host check and row locks (rebased on
--- top of migration 20250101000019_fix_round_resets, which now wipes
--- per-round state at the top of the function).
+-- Phase 11: revert the host-only restriction on start_game_atomic.
 --
--- Two bugs fixed:
+-- Migration 22 locked starting a round to the earliest-joined player.
+-- In practice, party-game etiquette doesn't need that gate — whoever's
+-- ready first should be able to start. The room/player row locks added
+-- in 22 (which prevent concurrent starts from interleaving) are kept.
 --
--- 1. The roster fetch (`array_agg(id) ... where room_id = ...`) had no
---    row lock. A late-joining INSERT between the fetch and the
---    per-player UPDATE loop would never get a team or assigned_word.
---    The CTE-with-FOR-UPDATE locks the player rows for the duration of
---    the function and uses the same single-shuffle pattern.
---
--- 2. The function took no caller id and had no host check, so any
---    client could start a game and two simultaneous starts could
---    interleave per-player UPDATEs. Now we lock the rooms row first to
---    serialize concurrent calls, abort if another active game already
---    exists, and require the caller to match the earliest-joined player
---    (matching the host convention used by kick_player).
---
--- The drop + create are wrapped in a single DO/EXECUTE so the whole
--- file is one top-level statement: Supabase's pooled deploy path uses
--- prepared statements, which reject multi-command files.
+-- p_caller_id stays in the signature for compatibility with the
+-- current client; we just no longer compare it to the host.
 
 do $migration$
 begin
-  execute 'drop function if exists start_game_atomic(uuid, jsonb, text, jsonb)';
-
   execute $sql$
 create or replace function start_game_atomic(
   p_room_id uuid,
@@ -42,7 +27,6 @@ declare
   v_game_id uuid;
   v_existing_game_id uuid;
   v_existing_status text;
-  v_host_id uuid;
   v_player_ids uuid[];
   v_player_names text[];
   v_player_count int;
@@ -67,16 +51,6 @@ begin
     if v_existing_status = 'active' then
       raise exception 'A game is already active in this room';
     end if;
-  end if;
-
-  select id into v_host_id
-  from players
-  where room_id = p_room_id
-  order by joined_at asc
-  limit 1;
-
-  if v_host_id is null or v_host_id <> p_caller_id then
-    raise exception 'Only the host may start a game';
   end if;
 
   update players set

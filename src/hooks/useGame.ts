@@ -81,12 +81,12 @@ export function useGame(roomId: string | undefined, currentGameId: string | null
 
       if (error || !gameId) {
         console.error('Failed to start game:', error);
-        return null;
+        return { gameId: null, error: error?.message ?? 'Failed to start game' };
       }
 
       // No need to fetch the game — the RPC updates rooms.current_game_id,
       // which triggers CDC → room subscription → currentGameId effect → fetch.
-      return gameId;
+      return { gameId: gameId as string, error: null };
     },
     [roomId],
   );
@@ -161,10 +161,13 @@ export function useGame(roomId: string | undefined, currentGameId: string | null
     [game?.id],
   );
 
-  const returnToLobby = useCallback(async () => {
-    if (!roomId) return;
-    await supabase.rpc('return_to_lobby', { p_room_id: roomId });
-  }, [roomId]);
+  const returnToLobby = useCallback(
+    async (callerId: string) => {
+      if (!roomId) return;
+      await supabase.rpc('return_to_lobby', { p_room_id: roomId, p_caller_id: callerId });
+    },
+    [roomId],
+  );
 
   const startTwoRoomsGame = useCallback(async () => {
     if (!roomId) return null;

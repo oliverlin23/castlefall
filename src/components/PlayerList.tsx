@@ -5,7 +5,6 @@ interface PlayerListProps {
   players: Player[];
   currentPlayerId?: string;
   showTeams?: boolean;
-  isHost?: boolean;
   onKick?: (playerId: string) => void;
 }
 
@@ -19,7 +18,7 @@ function pennantTone(name: string): (typeof PENNANT_TONES)[number] {
   return PENNANT_TONES[Math.abs(hash) % PENNANT_TONES.length];
 }
 
-export function PlayerList({ players, currentPlayerId, showTeams, isHost, onKick }: PlayerListProps) {
+export function PlayerList({ players, currentPlayerId, showTeams, onKick }: PlayerListProps) {
   return (
     <ul className="divide-y divide-[color:var(--color-ink)]/15 border border-[color:var(--color-ink)] bg-[color:var(--color-paper-bright)]">
       {players.map((player, idx) => {
@@ -65,7 +64,7 @@ export function PlayerList({ players, currentPlayerId, showTeams, isHost, onKick
                 )}
               </span>
             )}
-            {isHost && onKick && !isSelf && (
+            {onKick && !isSelf && (
               <button
                 onClick={() => onKick(player.id)}
                 className="opacity-0 group-hover:opacity-100 px-1 py-0.5 text-[color:var(--color-ink-soft)] hover:text-[color:var(--color-team2)] transition-opacity"

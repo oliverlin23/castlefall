@@ -10,6 +10,7 @@ import { Lobby } from './components/Lobby';
 import { GameBoard } from './components/GameBoard';
 import { GameResults } from './components/GameResults';
 import { Chat } from './components/Chat';
+import { DevPanel } from './components/DevPanel';
 import { TwoRoomsBoard } from './games/two_rooms/Board';
 import { TwoRoomsResults } from './games/two_rooms/Results';
 import { playSound, isSoundEnabled, setSoundEnabled } from './lib/sounds';
@@ -59,6 +60,7 @@ export function RoomPage({ roomName, onChangeRoom }: RoomPageProps) {
   const { lists: wordLists, loading: wordListsLoading, loadWordList } = useWordLists();
   const [joinAttempted, setJoinAttempted] = useState(false);
   const [lastSettings, setLastSettings] = useState<CastlefallSettings>({ wordCount: 18, timerDurationMs: 60000 });
+  const [startGameError, setStartGameError] = useState<string | null>(null);
   const [soundOn, setSoundOn] = useState(isSoundEnabled);
   const prevPhaseRef = useRef<string | null>(null);
   const prevPlayerCountRef = useRef(0);
@@ -125,7 +127,9 @@ export function RoomPage({ roomName, onChangeRoom }: RoomPageProps) {
       if (!players.length || !currentPlayer) return;
       const words = await loadWordList(wordListId);
       setLastSettings(settings);
-      await startGame(currentPlayer.id, words, wordListId, settings);
+      setStartGameError(null);
+      const { error } = await startGame(currentPlayer.id, words, wordListId, settings);
+      if (error) setStartGameError(error);
     },
     [players.length, currentPlayer, startGame, loadWordList],
   );
@@ -176,6 +180,11 @@ export function RoomPage({ roomName, onChangeRoom }: RoomPageProps) {
     if (!players.length) return;
     await startTwoRoomsGame();
   }, [players.length, startTwoRoomsGame]);
+
+  const handleReturnToLobby = useCallback(() => {
+    if (!currentPlayer) return;
+    return returnToLobby(currentPlayer.id);
+  }, [currentPlayer, returnToLobby]);
 
   function toggleSound() {
     const next = !soundOn;
@@ -289,6 +298,7 @@ export function RoomPage({ roomName, onChangeRoom }: RoomPageProps) {
             onStartGame={handleStartGame}
             onStartTwoRoomsGame={handleStartTwoRoomsGame}
             onKickPlayer={kickPlayer}
+            startGameError={startGameError}
           />
         )}
 
@@ -317,16 +327,17 @@ export function RoomPage({ roomName, onChangeRoom }: RoomPageProps) {
             players={players}
             currentPlayerId={currentPlayer.id}
             pastGames={pastGames}
-            onReturnToLobby={returnToLobby}
+            onReturnToLobby={handleReturnToLobby}
           />
         )}
 
         {phase === 'revealed' && game && game.game_type === 'two_rooms' && (
-          <TwoRoomsResults game={game} players={players} onReturnToLobby={returnToLobby} />
+          <TwoRoomsResults game={game} players={players} onReturnToLobby={handleReturnToLobby} />
         )}
       </main>
 
       <Chat roomId={room.id} playerName={currentPlayer.display_name} />
+      <DevPanel roomId={room.id} players={players} />
     </div>
   );
 }

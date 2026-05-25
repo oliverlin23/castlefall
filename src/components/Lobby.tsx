@@ -17,6 +17,7 @@ interface LobbyProps {
   onStartGame: (wordListId: string, settings: CastlefallSettings) => void;
   onStartTwoRoomsGame?: () => void;
   onKickPlayer?: (playerId: string) => void;
+  startGameError?: string | null;
 }
 
 const WORD_COUNTS = [12, 18, 24] as const;
@@ -38,6 +39,7 @@ export function Lobby({
   onStartGame,
   onStartTwoRoomsGame,
   onKickPlayer,
+  startGameError,
 }: LobbyProps) {
   const [selectedList, setSelectedList] = useState(wordLists[0]?.id ?? '');
   const [rulesOpen, setRulesOpen] = useState(false);
@@ -54,7 +56,6 @@ export function Lobby({
   const castlefallCanStart = players.length >= 4 && !!selectedList && !wordListsLoading;
   const twoRoomsCanStart = players.length >= 6 && players.length <= 30;
   const canStart = gameType === 'castlefall' ? castlefallCanStart : twoRoomsCanStart;
-  const isHost = !!currentPlayerId && players.length > 0 && players[0].id === currentPlayerId;
 
   function handleCopyLink() {
     navigator.clipboard.writeText(window.location.href).then(() => {
@@ -69,14 +70,7 @@ export function Lobby({
 
       {/* GAME MODE PICKER */}
       <section className="ink-card p-5 space-y-3">
-        <div className="flex items-center justify-between">
-          <span className="section-label">// Game</span>
-          {!isHost && (
-            <span className="font-mono text-[10px] text-[color:var(--color-ink-soft)] uppercase tracking-[0.18em]">
-              host only
-            </span>
-          )}
-        </div>
+        <span className="section-label">// Game</span>
         <div className="grid grid-cols-2 gap-0 border border-[color:var(--color-ink)]">
           {(
             [
@@ -89,13 +83,13 @@ export function Lobby({
               <button
                 key={opt.id}
                 type="button"
-                disabled={!isHost || !onChangeGameType}
+                disabled={!onChangeGameType}
                 onClick={() => onChangeGameType?.(opt.id)}
                 className={`px-4 py-3 text-left ${i === 0 ? 'border-r border-[color:var(--color-ink)]' : ''} ${
                   selected
                     ? 'bg-[color:var(--color-ink)] text-[color:var(--color-paper-bright)]'
                     : 'bg-[color:var(--color-paper-bright)] text-[color:var(--color-ink)] hover:bg-[color:var(--color-paper-dim)]'
-                } ${!isHost ? 'cursor-not-allowed opacity-70' : ''}`}
+                }`}
               >
                 <div className="font-display font-bold text-[15px] leading-tight" style={{ fontFamily: 'var(--font-display)' }}>
                   {opt.label}
@@ -138,7 +132,7 @@ export function Lobby({
             </p>
           </div>
         ) : (
-          <PlayerList players={players} currentPlayerId={currentPlayerId} isHost={isHost} onKick={onKickPlayer} />
+          <PlayerList players={players} currentPlayerId={currentPlayerId} onKick={onKickPlayer} />
         )}
       </section>
 
@@ -207,6 +201,11 @@ export function Lobby({
             <CastleSprite className="h-5 w-auto text-[color:var(--color-paper-bright)]" />
             {canStart ? 'Begin the round' : `Awaiting ${4 - players.length} more (${players.length}/4)`}
           </button>
+          {startGameError && (
+            <p className="font-mono text-[11px] text-[color:var(--color-seal-red)] text-center">
+              {startGameError}
+            </p>
+          )}
         </>
       )}
 
@@ -224,7 +223,7 @@ export function Lobby({
           </section>
           <button
             onClick={() => onStartTwoRoomsGame?.()}
-            disabled={!twoRoomsCanStart || !isHost}
+            disabled={!twoRoomsCanStart}
             className="btn-seal w-full !py-4 !text-[14px]"
           >
             {twoRoomsCanStart
