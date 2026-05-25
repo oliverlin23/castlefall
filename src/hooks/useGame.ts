@@ -69,7 +69,7 @@ export function useGame(roomId: string | undefined, currentGameId: string | null
       wordListName: string,
       settings: CastlefallSettings = DEFAULT_SETTINGS,
     ) => {
-      if (!roomId) return null;
+      if (!roomId) return { gameId: null, error: null };
 
       const { data: gameId, error } = await supabase.rpc('start_game_atomic', {
         p_room_id: roomId,
