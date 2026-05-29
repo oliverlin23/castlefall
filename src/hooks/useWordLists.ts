@@ -1,4 +1,5 @@
 import { useEffect, useState, useCallback } from 'react';
+import { validateWordList } from '../lib/validateWordList.js';
 
 export interface WordListMeta {
   id: string;
@@ -26,16 +27,17 @@ export function useWordLists() {
   }, []);
 
   const loadWordList = useCallback(
-    async (listId: string): Promise<string[]> => {
+    async (listId: string, wordCount?: number): Promise<string[]> => {
       const meta = lists.find((l) => l.id === listId);
       if (!meta) throw new Error(`Unknown word list: ${listId}`);
 
       const resp = await fetch(BASE_PATH + meta.file);
       const text = await resp.text();
-      return text
-        .split('\n')
-        .map((w) => w.trim())
-        .filter((w) => w.length > 0);
+      const result = validateWordList(text, { wordCount });
+      if (!result.ok) {
+        throw new Error(`Word list "${meta.name}" can't be used:\n• ${result.errors.join('\n• ')}`);
+      }
+      return result.words;
     },
     [lists],
   );

@@ -34,7 +34,6 @@ export function RoomPage({ roomName, onChangeRoom }: RoomPageProps) {
     kickPlayer,
     handlePlayerEvent,
     storedName,
-    playersLoaded,
   } = usePlayers(room?.id, room?.current_game_id);
   const {
     game,
@@ -118,9 +117,15 @@ export function RoomPage({ roomName, onChangeRoom }: RoomPageProps) {
   const handleStartGame = useCallback(
     async (wordListId: string, settings: CastlefallSettings) => {
       if (!players.length || !currentPlayer) return;
-      const words = await loadWordList(wordListId);
-      setLastSettings(settings);
       setStartGameError(null);
+      let words: string[];
+      try {
+        words = await loadWordList(wordListId, settings.wordCount);
+      } catch (e) {
+        setStartGameError(e instanceof Error ? e.message : String(e));
+        return;
+      }
+      setLastSettings(settings);
       const { error } = await startGame(currentPlayer.id, words, wordListId, settings);
       if (error) setStartGameError(error);
     },
