@@ -58,13 +58,17 @@ export function buildGameData(
 }
 
 /**
- * Suggested N (number of players to name in a method-1 declaration)
+ * Maximum N (number of players to name in a method-1 team declaration)
  * based on player count.
+ *
+ * Teams are split as evenly as possible: team 1 gets ceil(playerCount / 2)
+ * players and team 2 gets the rest (see start_game_atomic). A team
+ * declaration only wins if it names the declarer's team *exactly*, so the
+ * cap must allow selecting a full team — i.e. the size of the larger team,
+ * ceil(playerCount / 2). Capping any lower makes the larger team unable to
+ * ever declare correctly (e.g. 10 players → teams of 5, but a cap of 4 can
+ * never match).
  */
 export function suggestedN(playerCount: number): number {
-  if (playerCount <= 6) return Math.ceil(playerCount / 2);
-  if (playerCount === 7) return 3;
-  if (playerCount === 8) return 3;
-  if (playerCount === 9) return 4;
-  return 4; // 10+
+  return Math.ceil(playerCount / 2);
 }
