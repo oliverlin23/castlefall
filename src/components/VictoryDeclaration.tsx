@@ -28,8 +28,13 @@ export function VictoryDeclaration({
   const [wordGuess, setWordGuess] = useState('');
   const [showWordGuess, setShowWordGuess] = useState(false);
 
+  // Teams are split ceil(N/2) / floor(N/2), and a team declaration only wins on
+  // an exact match, so the only counts that can ever be correct are the two
+  // possible team sizes: floor(N/2)–ceil(N/2). (Even N collapses to a single
+  // required count, N/2.)
   const maxN = useMemo(() => suggestedN(players.length), [players.length]);
-  const minN = 2;
+  const minN = useMemo(() => Math.floor(players.length / 2), [players.length]);
+  const rangeLabel = minN === maxN ? `${maxN}` : `${minN}–${maxN}`;
   const timerDurationMs =
     (game.settings && 'timerDurationMs' in game.settings ? game.settings.timerDurationMs : undefined) ?? 60_000;
 
@@ -172,7 +177,7 @@ export function VictoryDeclaration({
           <p className="text-[12px] text-[color:var(--color-ink-mid)]">
             Select{' '}
             <strong className="text-[color:var(--color-ink)]">
-              {minN}–{maxN}
+              {rangeLabel}
             </strong>{' '}
             players (including yourself) you believe are on your team. You win
             only if your selection exactly matches your team.
