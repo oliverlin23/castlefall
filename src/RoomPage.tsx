@@ -263,12 +263,29 @@ export function RoomPage({ roomName, onChangeRoom }: RoomPageProps) {
         ? 'playing'
         : 'lobby';
 
+  // A player who joined after the round was dealt has no game_id for it: they
+  // sit out until the next round starts. Requiring at least one player row to
+  // carry this game's id keeps the spectator banner from flashing during the
+  // resync gap between start_game_atomic and the player rows landing.
+  const isSpectator =
+    !!game &&
+    currentPlayer.game_id !== game.id &&
+    players.some((p) => p.game_id === game.id);
+
   return (
     <div className="min-h-screen flex flex-col">
       <header className="sticky top-0 z-40 border-b border-[color:var(--color-ink)] bg-[color:var(--color-paper)]/95 backdrop-blur-[2px] px-3 sm:px-4 py-3">
         <div className="max-w-3xl mx-auto flex items-center justify-between flex-wrap gap-2">
           {wordmark}
           <div className="flex items-center gap-1.5">
+            {phase === 'playing' && isSpectator && (
+              <span
+                className="tag-chip !text-[9px] !text-[color:var(--color-violet)] !border-[color:var(--color-violet)]"
+                title="You joined after this round started, so you're watching it out"
+              >
+                Spectating
+              </span>
+            )}
             {soundToggleButton}
             <RoomSelector currentRoom={roomName} onChangeRoom={onChangeRoom} />
             <button
@@ -307,6 +324,7 @@ export function RoomPage({ roomName, onChangeRoom }: RoomPageProps) {
             assignedWord={currentPlayer.game_id === game.id ? currentPlayer.assigned_word : null}
             players={players}
             currentPlayer={currentPlayer}
+            isSpectator={isSpectator}
             onDeclareTeam={handleDeclareTeam}
             onDeclareWord={handleDeclareWord}
             onTimerExpired={handleTimerExpired}

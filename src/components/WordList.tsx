@@ -3,13 +3,16 @@ import { CrownSprite } from './sprites';
 interface WordListProps {
   words: string[];
   assignedWord: string | null;
+  /** When true, the assigned word is drawn like every other word (no crown, no
+   *  illumination) so a passer-by can't spot it. */
+  concealed?: boolean;
 }
 
-export function WordList({ words, assignedWord }: WordListProps) {
+export function WordList({ words, assignedWord, concealed = false }: WordListProps) {
   return (
     <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
       {words.map((word) => {
-        const isAssigned = word === assignedWord;
+        const isAssigned = !concealed && word === assignedWord;
         return (
           <div
             key={word}

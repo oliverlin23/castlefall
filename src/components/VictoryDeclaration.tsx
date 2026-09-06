@@ -9,6 +9,9 @@ interface VictoryDeclarationProps {
   game: Game;
   players: Player[];
   currentPlayer: Player;
+  /** False for spectators: they watch the declaration and its timer, but have
+   *  no team to counter with. */
+  canDeclare?: boolean;
   onDeclareTeam: (selectedPlayerIds: string[]) => void;
   onDeclareWord: (word: string) => void;
   onTimerExpired: () => void;
@@ -18,6 +21,7 @@ export function VictoryDeclaration({
   game,
   players,
   currentPlayer,
+  canDeclare = true,
   onDeclareTeam,
   onDeclareWord,
   onTimerExpired,
@@ -107,28 +111,36 @@ export function VictoryDeclaration({
         />
 
         <div className="border-t border-dashed border-[color:var(--color-ink-soft)] pt-4 space-y-3">
-          <p className="text-[12px] text-[color:var(--color-ink-mid)] text-center">
-            Counter with a word guess to override the declaration:
-          </p>
-          <form onSubmit={handleDeclareWord} className="flex flex-col sm:flex-row gap-2 justify-center">
-            <select
-              value={wordGuess}
-              onChange={(e) => setWordGuess(e.target.value)}
-              className="flex-1 sm:flex-initial sm:w-56"
-            >
-              <option value="">Select a word…</option>
-              {game.game_words
-                .filter((w) => w !== currentPlayer.assigned_word)
-                .map((w) => (
-                  <option key={w} value={w}>
-                    {w}
-                  </option>
-                ))}
-            </select>
-            <button type="submit" disabled={!wordGuess} className="btn-seal !py-2.5 !px-4 !text-[12px]">
-              Guess Word
-            </button>
-          </form>
+          {!canDeclare ? (
+            <p className="text-[12px] text-[color:var(--color-violet)] text-center font-mono uppercase tracking-[0.14em]">
+              You're spectating — you can't counter this declaration
+            </p>
+          ) : (
+            <>
+              <p className="text-[12px] text-[color:var(--color-ink-mid)] text-center">
+                Counter with a word guess to override the declaration:
+              </p>
+              <form onSubmit={handleDeclareWord} className="flex flex-col sm:flex-row gap-2 justify-center">
+                <select
+                  value={wordGuess}
+                  onChange={(e) => setWordGuess(e.target.value)}
+                  className="flex-1 sm:flex-initial sm:w-56"
+                >
+                  <option value="">Select a word…</option>
+                  {game.game_words
+                    .filter((w) => w !== currentPlayer.assigned_word)
+                    .map((w) => (
+                      <option key={w} value={w}>
+                        {w}
+                      </option>
+                    ))}
+                </select>
+                <button type="submit" disabled={!wordGuess} className="btn-seal !py-2.5 !px-4 !text-[12px]">
+                  Guess Word
+                </button>
+              </form>
+            </>
+          )}
         </div>
       </section>
     );

@@ -45,6 +45,9 @@ export function GameResults({
 }: GameResultsProps) {
   const team1Players = players.filter((p) => p.team === 1);
   const team2Players = players.filter((p) => p.team === 2);
+  // Anyone who joined mid-round never got a team, so they show up in neither
+  // team card — name them explicitly instead of dropping them off the page.
+  const spectators = players.filter((p) => p.game_id !== game.id);
   const teamWords = game.team_words as Record<number, string>;
   const outcome = outcomeMessage(game, players);
   const winner = game.winner_team;
@@ -107,6 +110,27 @@ export function GameResults({
           currentPlayerId={currentPlayerId}
         />
       </div>
+
+      {spectators.length > 0 && (
+        <section className="ink-card p-4 space-y-2">
+          <span className="font-mono text-[11px] uppercase tracking-[0.18em] text-[color:var(--color-violet)]">
+            // Spectated this round
+          </span>
+          <div className="flex flex-wrap gap-1.5">
+            {spectators.map((p) => (
+              <span key={p.id} className="tag-chip">
+                {p.display_name}
+                {p.id === currentPlayerId && (
+                  <span className="normal-case tracking-normal text-[color:var(--color-ink-soft)]">you</span>
+                )}
+              </span>
+            ))}
+          </div>
+          <p className="text-[11px] text-[color:var(--color-ink-mid)]">
+            They joined after the round started and had no word or team.
+          </p>
+        </section>
+      )}
 
       <button
         onClick={onReturnToLobby}
