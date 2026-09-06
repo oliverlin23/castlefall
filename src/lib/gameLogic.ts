@@ -1,3 +1,5 @@
+import type { Game, Player } from '../types';
+
 /**
  * Fisher-Yates shuffle — returns a new shuffled copy of the array.
  */
@@ -71,4 +73,23 @@ export function buildGameData(
  */
 export function suggestedN(playerCount: number): number {
   return Math.ceil(playerCount / 2);
+}
+
+/**
+ * Split the room into the players dealt into `game` and those who joined
+ * after it started (spectators: no team, no word).
+ *
+ * Player rows are resynced after start_game_atomic, so there is a brief
+ * window where no row carries the new game id yet. In that window everyone
+ * is treated as a participant rather than as a spectator.
+ */
+export function splitByRound(players: Player[], game: Game) {
+  const participants = players.filter((p) => p.game_id === game.id);
+  if (participants.length === 0) {
+    return { participants: players, spectators: [] as Player[] };
+  }
+  return {
+    participants,
+    spectators: players.filter((p) => p.game_id !== game.id),
+  };
 }

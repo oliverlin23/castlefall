@@ -9,8 +9,7 @@ interface VictoryDeclarationProps {
   game: Game;
   players: Player[];
   currentPlayer: Player;
-  /** False for spectators: they watch the declaration and its timer, but have
-   *  no team to counter with. */
+  /** False for spectators, who follow the timer but have no team to counter with. */
   canDeclare?: boolean;
   onDeclareTeam: (selectedPlayerIds: string[]) => void;
   onDeclareWord: (word: string) => void;
@@ -111,11 +110,7 @@ export function VictoryDeclaration({
         />
 
         <div className="border-t border-dashed border-[color:var(--color-ink-soft)] pt-4 space-y-3">
-          {!canDeclare ? (
-            <p className="text-[12px] text-[color:var(--color-violet)] text-center font-mono uppercase tracking-[0.14em]">
-              You're spectating — you can't counter this declaration
-            </p>
-          ) : (
+          {canDeclare ? (
             <>
               <p className="text-[12px] text-[color:var(--color-ink-mid)] text-center">
                 Counter with a word guess to override the declaration:
@@ -140,6 +135,10 @@ export function VictoryDeclaration({
                 </button>
               </form>
             </>
+          ) : (
+            <p className="section-label text-center !text-[color:var(--color-violet)]">
+              You're spectating — you can't counter this declaration
+            </p>
           )}
         </div>
       </section>

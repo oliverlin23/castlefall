@@ -332,6 +332,30 @@ input:focus, select:focus, textarea:focus {
 .rule-tick::before { left: 8px; }
 .rule-tick::after  { right: 8px; }
 
+/* Hatched bar that stands in for a concealed word. Fixed width so the word's
+   length doesn't leak to someone glancing at the screen. */
+.redacted-bar {
+  width: 68%;
+  max-width: 280px;
+  height: 38px;
+  border: 1px solid var(--color-ink);
+  background: repeating-linear-gradient(
+    45deg,
+    var(--color-ink-soft) 0 3px,
+    var(--color-paper-dim) 3px 9px
+  );
+}
+@media (min-width: 640px) {
+  .redacted-bar { height: 46px; }
+}
+
+/* Spectator notice — dashed violet frame so it can't be mistaken for the
+   secret-word banner. */
+.spectator-card {
+  background: var(--color-paper-dim);
+  border: 2px dashed var(--color-violet);
+}
+
 /* Illuminated word styling — used for the assigned word in the WordList */
 .illuminated {
   font-family: var(--font-illuminated);
