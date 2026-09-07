@@ -17,6 +17,7 @@ interface LobbyProps {
   onStartGame: (wordListId: string, settings: CastlefallSettings) => void;
   onStartTwoRoomsGame?: () => void;
   onKickPlayer?: (playerId: string) => void;
+  connectedIds?: Set<string>;
   startGameError?: string | null;
 }
 
@@ -39,6 +40,7 @@ export function Lobby({
   onStartGame,
   onStartTwoRoomsGame,
   onKickPlayer,
+  connectedIds,
   startGameError,
 }: LobbyProps) {
   const [selectedList, setSelectedList] = useState(wordLists[0]?.id ?? '');
@@ -132,7 +134,7 @@ export function Lobby({
             </p>
           </div>
         ) : (
-          <PlayerList players={players} currentPlayerId={currentPlayerId} onKick={onKickPlayer} />
+          <PlayerList players={players} currentPlayerId={currentPlayerId} connectedIds={connectedIds} onKick={onKickPlayer} />
         )}
       </section>
 

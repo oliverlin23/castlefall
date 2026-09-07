@@ -7,54 +7,47 @@ export interface RoomSubscriptionCallbacks {
   onRoomUpdate: (room: Room) => void;
   onPlayerEvent: (eventType: string, payload: { new?: Player; old?: Player }) => void;
   onGameUpdate: (game: Game) => void;
+  /** The set of player ids currently tracked on the presence channel. */
+  onPresenceSync: (connectedIds: Set<string>) => void;
+  /** The tab came back to the foreground; state may have moved on without us. */
+  onResume: () => void;
 }
 
-interface PresenceState {
+export interface PresenceIdentity {
   playerId: string;
   displayName: string;
 }
 
-// Grace window before treating a presence-leave as a real disconnect.
-// A page reload fires untrack() then re-tracks within ~1s; waiting here
-// lets the reload cancel its own cleanup so no row churn happens.
-const DISCONNECT_GRACE_MS = 4000;
-
 /**
- * Consolidates room, players, and game subscriptions into a single
- * Supabase Realtime channel per room. Also handles Presence tracking
- * for instant disconnect detection (replaces heartbeat polling).
+ * One Supabase Realtime channel per room carrying row changes for rooms,
+ * players and games, plus Presence.
+ *
+ * Presence is informational only. A dropped websocket (locked phone,
+ * backgrounded tab) makes the player show as away; it does not remove them.
+ * Removal is the job of prune_stale_players, fed by useHeartbeat.
  */
 export function useRoomSubscription(
   roomId: string | undefined,
   callbacks: RoomSubscriptionCallbacks,
-  currentPlayerId: string | undefined,
-  currentPlayerName: string | undefined,
-  players: Player[],
+  identity: PresenceIdentity | null,
 ) {
   const cbRef = useRef(callbacks);
-  cbRef.current = callbacks;
-  const playersRef = useRef(players);
-  playersRef.current = players;
+  const identityRef = useRef(identity);
   const channelRef = useRef<RealtimeChannel | null>(null);
-  const currentPlayerIdRef = useRef(currentPlayerId);
-  currentPlayerIdRef.current = currentPlayerId;
 
-  // Create channel once per room — does NOT depend on player identity
+  useEffect(() => {
+    cbRef.current = callbacks;
+    identityRef.current = identity;
+  }, [callbacks, identity]);
+
   useEffect(() => {
     if (!roomId) return;
-
-    const pendingCleanups = new Map<string, ReturnType<typeof setTimeout>>();
 
     const channel = supabase
       .channel(`room-all-${roomId}`)
       .on(
         'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'rooms',
-          filter: `id=eq.${roomId}`,
-        },
+        { event: '*', schema: 'public', table: 'rooms', filter: `id=eq.${roomId}` },
         (payload) => {
           if (payload.eventType === 'UPDATE') {
             cbRef.current.onRoomUpdate(payload.new as Room);
@@ -63,12 +56,7 @@ export function useRoomSubscription(
       )
       .on(
         'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'players',
-          filter: `room_id=eq.${roomId}`,
-        },
+        { event: '*', schema: 'public', table: 'players', filter: `room_id=eq.${roomId}` },
         (payload) => {
           cbRef.current.onPlayerEvent(payload.eventType, {
             new: payload.new as Player | undefined,
@@ -78,96 +66,55 @@ export function useRoomSubscription(
       )
       .on(
         'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'games',
-          filter: `room_id=eq.${roomId}`,
-        },
+        { event: '*', schema: 'public', table: 'games', filter: `room_id=eq.${roomId}` },
         (payload) => {
           if (payload.eventType === 'UPDATE') {
             cbRef.current.onGameUpdate(payload.new as Game);
           }
         },
       )
-      .on('presence', { event: 'join' }, ({ newPresences }) => {
-        for (const presence of newPresences) {
-          const state = presence as unknown as PresenceState;
-          const joinedId = state.playerId;
-          if (!joinedId) continue;
-          const pending = pendingCleanups.get(joinedId);
-          if (pending) {
-            clearTimeout(pending);
-            pendingCleanups.delete(joinedId);
-          }
+      .on('presence', { event: 'sync' }, () => {
+        const state = channel.presenceState<PresenceIdentity>();
+        const ids = new Set<string>();
+        for (const refs of Object.values(state)) {
+          for (const r of refs) if (r.playerId) ids.add(r.playerId);
         }
-      })
-      .on('presence', { event: 'leave' }, ({ leftPresences }) => {
-        const currentPlayers = playersRef.current;
-        const hostId = currentPlayers.length > 0 ? currentPlayers[0].id : null;
-        const myId = currentPlayerIdRef.current;
-
-        for (const presence of leftPresences) {
-          const state = presence as unknown as PresenceState;
-          const departedId = state.playerId;
-          if (!departedId || departedId === '_unregistered') continue;
-
-          let shouldCleanup = false;
-          if (hostId === myId) {
-            shouldCleanup = true;
-          } else if (departedId === hostId) {
-            const nextHost = currentPlayers.find((p) => p.id !== departedId);
-            shouldCleanup = nextHost?.id === myId;
-          }
-
-          if (shouldCleanup) {
-            const existing = pendingCleanups.get(departedId);
-            if (existing) clearTimeout(existing);
-            const handle = setTimeout(() => {
-              pendingCleanups.delete(departedId);
-              // Belt-and-suspenders: if the player has re-tracked under any
-              // presence ref by now, the join event may have raced past us.
-              // Skip the delete if presence still claims this playerId.
-              const state = channel.presenceState() as Record<string, PresenceState[]>;
-              for (const refs of Object.values(state)) {
-                for (const r of refs) {
-                  if (r?.playerId === departedId) return;
-                }
-              }
-              supabase.rpc('release_disconnected_player', { p_player_id: departedId }).then();
-            }, DISCONNECT_GRACE_MS);
-            pendingCleanups.set(departedId, handle);
-          }
-        }
+        cbRef.current.onPresenceSync(ids);
       })
       .subscribe();
 
     channelRef.current = channel;
 
+    // Mobile browsers close or starve the websocket while the tab is hidden.
+    // supabase-js reconnects with backoff, but its timers are throttled too,
+    // so on return we reconnect eagerly, re-announce presence, and let the
+    // page refetch anything it might have missed.
+    const handleVisibility = () => {
+      if (document.visibilityState !== 'visible') return;
+      if (!supabase.realtime.isConnected()) supabase.realtime.connect();
+      if (identityRef.current) channel.track(identityRef.current);
+      cbRef.current.onResume();
+    };
+    document.addEventListener('visibilitychange', handleVisibility);
+
     const handleBeforeUnload = () => {
-      if (currentPlayerIdRef.current) {
-        channel.untrack();
-      }
+      if (identityRef.current) channel.untrack();
     };
     window.addEventListener('beforeunload', handleBeforeUnload);
 
     return () => {
+      document.removeEventListener('visibilitychange', handleVisibility);
       window.removeEventListener('beforeunload', handleBeforeUnload);
-      for (const handle of pendingCleanups.values()) clearTimeout(handle);
-      pendingCleanups.clear();
       channelRef.current = null;
       supabase.removeChannel(channel);
     };
   }, [roomId]);
 
-  // Track/update presence separately — no channel teardown on identity change
+  // Presence is tracked separately so an identity change doesn't tear the
+  // channel down.
   useEffect(() => {
     const channel = channelRef.current;
-    if (!channel || !currentPlayerId || !currentPlayerName) return;
-
-    channel.track({
-      playerId: currentPlayerId,
-      displayName: currentPlayerName,
-    } satisfies PresenceState);
-  }, [currentPlayerId, currentPlayerName]);
+    if (!channel || !identity) return;
+    channel.track(identity);
+  }, [identity]);
 }

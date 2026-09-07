@@ -15,6 +15,8 @@ interface GameBoardProps {
   currentPlayer: Player;
   /** The player joined after this round was dealt: no word, no team. */
   isSpectator: boolean;
+  /** Ids currently tracked on the presence channel. */
+  connectedIds?: Set<string>;
   onDeclareTeam: (selectedPlayerIds: string[]) => void;
   onDeclareWord: (word: string) => void;
   onTimerExpired: () => void;
@@ -29,6 +31,7 @@ export function GameBoard({
   players,
   currentPlayer,
   isSpectator,
+  connectedIds,
   onDeclareTeam,
   onDeclareWord,
   onTimerExpired,
@@ -46,6 +49,7 @@ export function GameBoard({
   // the room, so the count shown here has to be drawn from the same set.
   const { participants, spectators } = splitByRound(players, game);
   const voteThreshold = Math.ceil(participants.length / 2);
+  const awayCount = connectedIds ? participants.filter((p) => !connectedIds.has(p.id)).length : 0;
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -73,6 +77,9 @@ export function GameBoard({
           {participants.length} {participants.length === 1 ? 'player' : 'players'} at the table
           {spectators.length > 0 && (
             <span className="text-[color:var(--color-violet)]"> · {spectators.length} spectating</span>
+          )}
+          {awayCount > 0 && (
+            <span className="text-[color:var(--color-ink-soft)]"> · {awayCount} away</span>
           )}
         </span>
         <div className="flex-1" />

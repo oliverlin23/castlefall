@@ -3,7 +3,8 @@ import { useRoom } from './hooks/useRoom';
 import { usePlayers } from './hooks/usePlayers';
 import { useGame } from './hooks/useGame';
 import { useWordLists } from './hooks/useWordLists';
-import { useRoomSubscription } from './hooks/useRoomSubscription';
+import { useRoomSubscription, type PresenceIdentity } from './hooks/useRoomSubscription';
+import { useHeartbeat } from './hooks/useHeartbeat';
 import { RoomSelector } from './components/RoomSelector';
 import { NameEntry } from './components/NameEntry';
 import { Lobby } from './components/Lobby';
@@ -25,7 +26,7 @@ interface RoomPageProps {
 }
 
 export function RoomPage({ roomName, onChangeRoom }: RoomPageProps) {
-  const { room, loading: roomLoading, handleRoomUpdate, setGameType } = useRoom(roomName);
+  const { room, loading: roomLoading, handleRoomUpdate, refreshRoom, setGameType } = useRoom(roomName);
   const {
     players,
     currentPlayer,
@@ -35,6 +36,7 @@ export function RoomPage({ roomName, onChangeRoom }: RoomPageProps) {
     leaveRoom,
     kickPlayer,
     handlePlayerEvent,
+    refreshPlayers,
     storedName,
   } = usePlayers(room?.id, room?.current_game_id);
   const {
@@ -49,15 +51,37 @@ export function RoomPage({ roomName, onChangeRoom }: RoomPageProps) {
     unvoteToReveal,
     returnToLobby,
     handleGameUpdate,
+    refreshGame,
   } = useGame(room?.id, room?.current_game_id);
 
-  // Unified realtime subscription for room, players, and games
+  // Player ids currently connected to the room channel; undefined until the
+  // first presence sync so nobody is flagged away before we know anything.
+  const [connectedIds, setConnectedIds] = useState<Set<string> | undefined>();
+
+  // Anything can have changed while the tab was hidden. Room first: a new
+  // current_game_id makes useGame refetch on its own.
+  const handleResume = useCallback(() => {
+    refreshRoom();
+    refreshPlayers();
+    refreshGame();
+  }, [refreshRoom, refreshPlayers, refreshGame]);
+
   const subscriptionCallbacks = useMemo(() => ({
     onRoomUpdate: handleRoomUpdate,
     onPlayerEvent: handlePlayerEvent,
     onGameUpdate: handleGameUpdate,
-  }), [handleRoomUpdate, handlePlayerEvent, handleGameUpdate]);
-  useRoomSubscription(room?.id, subscriptionCallbacks, currentPlayer?.id, currentPlayer?.display_name, players);
+    onPresenceSync: setConnectedIds,
+    onResume: handleResume,
+  }), [handleRoomUpdate, handlePlayerEvent, handleGameUpdate, handleResume]);
+
+  const currentPlayerId = currentPlayer?.id;
+  const currentPlayerName = currentPlayer?.display_name;
+  const presenceIdentity = useMemo<PresenceIdentity | null>(
+    () => (currentPlayerId && currentPlayerName ? { playerId: currentPlayerId, displayName: currentPlayerName } : null),
+    [currentPlayerId, currentPlayerName],
+  );
+  useRoomSubscription(room?.id, subscriptionCallbacks, presenceIdentity);
+  useHeartbeat(currentPlayerId);
   const { lists: wordLists, loading: wordListsLoading, loadWordList } = useWordLists();
   const [joinAttempted, setJoinAttempted] = useState(false);
   const [lastSettings, setLastSettings] = useState<CastlefallSettings>({ wordCount: 18, timerDurationMs: 60000 });
@@ -302,6 +326,7 @@ export function RoomPage({ roomName, onChangeRoom }: RoomPageProps) {
             onStartGame={handleStartGame}
             onStartTwoRoomsGame={handleStartTwoRoomsGame}
             onKickPlayer={kickPlayer}
+            connectedIds={connectedIds}
             startGameError={startGameError}
           />
         )}
@@ -314,6 +339,7 @@ export function RoomPage({ roomName, onChangeRoom }: RoomPageProps) {
             players={players}
             currentPlayer={currentPlayer}
             isSpectator={isSpectator}
+            connectedIds={connectedIds}
             onDeclareTeam={handleDeclareTeam}
             onDeclareWord={handleDeclareWord}
             onTimerExpired={handleTimerExpired}
@@ -331,6 +357,7 @@ export function RoomPage({ roomName, onChangeRoom }: RoomPageProps) {
             game={game}
             players={players}
             currentPlayerId={currentPlayer.id}
+            connectedIds={connectedIds}
             pastGames={pastGames}
             onReturnToLobby={handleReturnToLobby}
           />

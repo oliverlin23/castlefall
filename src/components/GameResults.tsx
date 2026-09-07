@@ -8,6 +8,7 @@ interface GameResultsProps {
   game: Game;
   players: Player[];
   currentPlayerId?: string;
+  connectedIds?: Set<string>;
   pastGames: Game[];
   onReturnToLobby: () => void;
 }
@@ -41,6 +42,7 @@ export function GameResults({
   game,
   players,
   currentPlayerId,
+  connectedIds,
   pastGames,
   onReturnToLobby,
 }: GameResultsProps) {
@@ -100,6 +102,7 @@ export function GameResults({
           word={teamWords[1]}
           players={team1Players}
           currentPlayerId={currentPlayerId}
+          connectedIds={connectedIds}
         />
         <TeamCard
           team={2}
@@ -107,6 +110,7 @@ export function GameResults({
           word={teamWords[2]}
           players={team2Players}
           currentPlayerId={currentPlayerId}
+          connectedIds={connectedIds}
         />
       </div>
 
@@ -145,12 +149,14 @@ function TeamCard({
   word,
   players,
   currentPlayerId,
+  connectedIds,
 }: {
   team: 1 | 2;
   isWinner: boolean;
   word: string;
   players: Player[];
   currentPlayerId?: string;
+  connectedIds?: Set<string>;
 }) {
   const teamLabel = team === 1 ? 'Blue Team' : 'Crimson Team';
   const tone = team === 1 ? 'team1' : 'team2';
@@ -190,7 +196,7 @@ function TeamCard({
           </p>
         </div>
       </div>
-      <PlayerList players={players} currentPlayerId={currentPlayerId} showTeams />
+      <PlayerList players={players} currentPlayerId={currentPlayerId} connectedIds={connectedIds} showTeams />
       {!isWinner && (
         <div className="flex items-center gap-1.5 pt-1">
           <CastleSprite className="h-3 w-auto text-[color:var(--color-ink-soft)] opacity-60" />

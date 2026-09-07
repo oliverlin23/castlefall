@@ -140,7 +140,7 @@ export function DevPanel({ roomId, players }: DevPanelProps) {
           <p className="font-mono text-[10px] text-[color:var(--color-seal-red)] break-words">{error}</p>
         )}
         <p className="font-mono text-[9px] text-[color:var(--color-ink-soft)] leading-relaxed">
-          Bots are inserted directly into the players table. They won't heartbeat, but pruning is disabled. Clear them when done.
+          Bots are inserted directly into the players table. They don't heartbeat, so the server prunes them from the lobby after a few minutes.
         </p>
       </div>
     </div>

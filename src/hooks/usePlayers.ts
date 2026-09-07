@@ -264,6 +264,7 @@ export function usePlayers(roomId: string | undefined, currentGameId?: string | 
     leaveRoom,
     kickPlayer,
     handlePlayerEvent,
+    refreshPlayers: fetchPlayers,
     storedName: storedPlayer?.name ?? '',
     playersLoaded,
   };

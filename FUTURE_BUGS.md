@@ -14,13 +14,7 @@ Lower-priority issues identified during the April 2026 audit. Tracked here so th
 
 - **`Timer` re-fires `onExpired` across re-renders.** `src/components/Timer.tsx:25-44` depends on `[durationMs, startedAt, onExpired]`. When the parent's `onExpired` identity changes (game state ticks), the effect tears down and rebuilds; the new interval finds elapsed >= duration immediately and re-fires. `reveal_game` is idempotent so it isn't catastrophic, but it's wasteful. Fix: stash `onExpired` in a ref inside `Timer` and depend only on `[durationMs, startedAt]`.
 
-- **Presence-leave payload shape not validated.** `src/hooks/useRoomSubscription.ts:86-107` casts each `leftPresences` entry to `PresenceState` and reads `state.playerId`. If Supabase wraps the leave payload differently than expected, `departedId` is silently `undefined` and the cleanup branch never fires — producing slow ghost-player buildup with no error surfaced. Fix: log a sample payload once, then narrow the cast / add a runtime guard.
-
-- **`_unregistered` literal is referenced but never set.** `useRoomSubscription.ts:94` skips presences whose `playerId === '_unregistered'`, but no code path tracks that value. Either remove the branch or wire it up if the original intent was to track an "unregistered" presence pre-name.
-
-- **Last player closing tab doesn't deactivate room.** `RoomPage.tsx:81-85` runs the deactivate effect on a client that's still alive. If the last remaining player simply closes their tab, no client survives to mark the room inactive — orphaned `active=true, players=0` rooms accumulate. Fix: deactivate from the server when `prune_stale_players` removes the last player, or in `release_disconnected_player` if it leaves the room empty.
-
-- **`prune_stale_players` not actually scheduled.** Defined in `supabase/migrations/20250101000011_prune_stale_players.sql:5-26`, but the cron line is commented out. Without it, players in active games are now never deleted automatically (because of the `release_disconnected_player` guard), and players not in active games still rely on this never-running job. Either schedule the cron (`select cron.schedule(...)`) in production, run it on a Vercel/Supabase Edge cron, or accept manual cleanup.
+- **Last player closing tab doesn't deactivate room.** `RoomPage.tsx:81-85` runs the deactivate effect on a client that's still alive. If the last remaining player simply closes their tab, no client survives to mark the room inactive — orphaned `active=true, players=0` rooms accumulate. Fix: deactivate from the server when `prune_stale_players` removes the last player.
 
 ## Cross-game-mode
 

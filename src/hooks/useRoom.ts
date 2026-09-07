@@ -35,6 +35,16 @@ export function useRoom(roomName: string) {
     joinRoom(roomName);
   }, [roomName, joinRoom]);
 
+  const roomId = room?.id;
+
+  /** Re-read the room row, e.g. after the tab was backgrounded and may have
+   *  missed a current_game_id change. */
+  const refreshRoom = useCallback(async () => {
+    if (!roomId) return;
+    const { data } = await supabase.from('rooms').select('*').eq('id', roomId).single();
+    if (data) setRoom(data);
+  }, [roomId]);
+
   /** Handle room update from the unified subscription. */
   const handleRoomUpdate = useCallback((updated: Room) => {
     setRoom(updated);
@@ -42,14 +52,14 @@ export function useRoom(roomName: string) {
 
   /** Change the game type for this room. Syncs to all clients via CDC. */
   const setGameType = useCallback(async (gameType: GameType) => {
-    if (!room?.id) return;
+    if (!roomId) return;
     // Optimistic
     setRoom((prev) => (prev ? { ...prev, game_type: gameType } : prev));
     await supabase.rpc('set_room_game_type', {
-      p_room_id: room.id,
+      p_room_id: roomId,
       p_game_type: gameType,
     });
-  }, [room?.id]);
+  }, [roomId]);
 
-  return { room, loading, joinRoom, handleRoomUpdate, setGameType };
+  return { room, loading, joinRoom, handleRoomUpdate, refreshRoom, setGameType };
 }

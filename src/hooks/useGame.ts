@@ -9,24 +9,20 @@ export function useGame(roomId: string | undefined, currentGameId: string | null
   const [pastGames, setPastGames] = useState<Game[]>([]);
   const [loading, setLoading] = useState(false);
 
-  // Fetch current game
-  useEffect(() => {
+  const fetchGame = useCallback(async () => {
     if (!currentGameId) {
       setGame(null);
       return;
     }
-
     setLoading(true);
-    supabase
-      .from('games')
-      .select('*')
-      .eq('id', currentGameId)
-      .single()
-      .then(({ data }) => {
-        if (data) setGame(data);
-        setLoading(false);
-      });
+    const { data } = await supabase.from('games').select('*').eq('id', currentGameId).single();
+    if (data) setGame(data);
+    setLoading(false);
   }, [currentGameId]);
+
+  useEffect(() => {
+    fetchGame();
+  }, [fetchGame]);
 
   // Fetch past games for this room
   useEffect(() => {
@@ -185,5 +181,5 @@ export function useGame(roomId: string | undefined, currentGameId: string | null
     return gameId as string;
   }, [roomId]);
 
-  return { game, pastGames, loading, startGame, startTwoRoomsGame, revealGame, declareTeam, declareWord, voteToReveal, unvoteToReveal, returnToLobby, handleGameUpdate };
+  return { game, pastGames, loading, startGame, startTwoRoomsGame, revealGame, declareTeam, declareWord, voteToReveal, unvoteToReveal, returnToLobby, handleGameUpdate, refreshGame: fetchGame };
 }
